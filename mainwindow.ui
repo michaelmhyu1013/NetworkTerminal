@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>800</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <widget class="QWidget" name="centralwidget"/>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>800</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="menuResolution">
+    <property name="title">
+     <string>Resolution</string>
+    </property>
+    <addaction name="actionResolve_host_Name_To_IP"/>
+    <addaction name="actionResolve_IP_To_Host_Name"/>
+    <addaction name="actionResolve_Service_Name_To_Port"/>
+    <addaction name="actionResolve_Port_To_Service_Name"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuResolution"/>
+   <addaction name="menuHelp"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionResolve_host_Name_To_IP">
+   <property name="text">
+    <string>Resolve host Name To IP...</string>
+   </property>
+  </action>
+  <action name="actionResolve_IP_To_Host_Name">
+   <property name="text">
+    <string>Resolve IP To Host Name...</string>
+   </property>
+  </action>
+  <action name="actionResolve_Service_Name_To_Port">
+   <property name="text">
+    <string>Resolve Service Name To Port...</string>
+   </property>
+  </action>
+  <action name="actionResolve_Port_To_Service_Name">
+   <property name="text">
+    <string>Resolve Port To Service Name...</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
