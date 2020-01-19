@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "dialog.h"
+#include "dualdialog.h"
 #include <QDialog>
 #include <QTextEdit>
 
@@ -36,7 +37,7 @@ void MainWindow::on_actionResolve_IP_To_Host_Name_triggered()
 
 void MainWindow::on_actionResolve_Service_Name_To_Port_triggered()
 {
-    dialog rDialog;
+    dualdialog rDialog;
     rDialog.configureServiceToPort();
     rDialog.setModal(true);
     rDialog.exec();
@@ -44,8 +45,8 @@ void MainWindow::on_actionResolve_Service_Name_To_Port_triggered()
 
 void MainWindow::on_actionResolve_Port_To_Service_Name_triggered()
 {
-    dialog rDialog;
-    rDialog.ConfigurePortToService();
+    dualdialog   rDialog;
+    rDialog.configurePortToService();
     rDialog.setModal(true);
     rDialog.exec();
 }

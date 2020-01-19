@@ -1,7 +1,6 @@
 #pragma once
 
 #include "dialogmanager.h"
-
 #include <QDialog>
 
 namespace Ui {
@@ -25,9 +24,6 @@ public:
 
     void configureIPToHost();
 
-    void configureServiceToPort();
-
-    void ConfigurePortToService();
 private slots:
     void on_pushButton_clicked();
 

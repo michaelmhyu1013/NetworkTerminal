@@ -18,6 +18,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
     dialog.cpp \
     dialogmanager.cpp \
+    dualdialog.cpp \
     main.cpp \
     mainwindow.cpp \
     windowssocketmanager.cpp
@@ -25,11 +26,13 @@ SOURCES += \
 HEADERS += \
     dialog.h \
     dialogmanager.h \
+    dualdialog.h \
     mainwindow.h \
     windowssocketmanager.h
 
 FORMS += \
     dialog.ui \
+    dualdialog.ui \
     mainwindow.ui
 
 LIBS += ws2_32.lib
