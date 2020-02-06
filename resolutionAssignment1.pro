@@ -16,6 +16,8 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    configurationwindow.cpp \
+    connection.cpp \
     dialog.cpp \
     dialogmanager.cpp \
     dualdialog.cpp \
@@ -24,6 +26,8 @@ SOURCES += \
     windowssocketmanager.cpp
 
 HEADERS += \
+    configurationwindow.h \
+    connection.h \
     dialog.h \
     dialogmanager.h \
     dualdialog.h \
@@ -31,11 +35,12 @@ HEADERS += \
     windowssocketmanager.h
 
 FORMS += \
+    configurationwindow.ui \
     dialog.ui \
     dualdialog.ui \
     mainwindow.ui
 
-LIBS += ws2_32.lib
+LIBS += -lws2_32
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

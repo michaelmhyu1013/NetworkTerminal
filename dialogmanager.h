@@ -5,10 +5,10 @@
 class DialogManager
 {
 public:
-    DialogManager();
-    WindowsSocketManager * getWinsockManager();
+   DialogManager();
+
+   WindowsSocketManager *getWinsockManager();
 
 private:
-    WindowsSocketManager *winsockManager;
+   WindowsSocketManager *winsockManager;
 };
-

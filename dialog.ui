@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>300</height>
+    <height>379</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,8 +16,8 @@
   <widget class="QDialogButtonBox" name="buttonBox_2">
    <property name="geometry">
     <rect>
-     <x>304</x>
-     <y>260</y>
+     <x>300</x>
+     <y>330</y>
      <width>81</width>
      <height>32</height>
     </rect>
@@ -32,8 +32,8 @@
   <widget class="QLabel" name="output">
    <property name="geometry">
     <rect>
-     <x>10</x>
-     <y>220</y>
+     <x>-10</x>
+     <y>230</y>
      <width>371</width>
      <height>20</height>
     </rect>
@@ -114,6 +114,38 @@
    </property>
    <property name="alignment">
     <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+   </property>
+  </widget>
+  <widget class="QLabel" name="outputLabel_2">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>270</y>
+     <width>381</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Alias:</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
+   </property>
+  </widget>
+  <widget class="QLabel" name="alias">
+   <property name="geometry">
+    <rect>
+     <x>12</x>
+     <y>300</y>
+     <width>371</width>
+     <height>20</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
    </property>
   </widget>
  </widget>
