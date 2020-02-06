@@ -33,26 +33,48 @@
 #include <ui_configurationwindow.h>
 
 MainWindow::MainWindow(QWidget *parent)
-   : QMainWindow(parent)
-   , ui(new Ui::MainWindow)
+    : QMainWindow(parent)
+    , ui(new Ui::MainWindow)
 {
-   this->winsockManager = new WindowsSocketManager();
-   ui->setupUi(this);
-   confWindow = new ConfigurationWindow(this);
-   connect(confWindow, &ConfigurationWindow::configurationWindowNotify, this, &MainWindow::configureConnection);
+    ui->setupUi(this);
+    winsockManager = new WindowsSocketManager();
+    confWindow     = new ConfigurationWindow(this);
+    connManager    = new ConnectionManager();
+    connConfig     = new ConnectionConfigurations();
+    connect(confWindow, &ConfigurationWindow::configurationWindowNotify, this, &MainWindow::configureConnection);
 }
 
 
 MainWindow::~MainWindow()
 {
-   delete ui;
+    delete ui;
 }
 
 
 void MainWindow::configureConnection()
 {
-   qDebug("executing slot");
-   std::string s = confWindow->getConfigurationWindowUI()->packetValue->currentText().toStdString();
+    std::string ip             = confWindow->getConfigurationWindowUI()->hostInput->toPlainText().toStdString();
+    int         port           = confWindow->getConfigurationWindowUI()->portInput->toPlainText().toInt();
+    int         packetSize     = confWindow->getConfigurationWindowUI()->packetValue->currentText().toInt();
+    int         transmissions  = confWindow->getConfigurationWindowUI()->tranmissionValue->currentText().toInt();
+    int         connectionType = confWindow->getConfigurationWindowUI()->connectionUDP->isChecked() ? 0 : 1;
+
+//    try
+//    {
+//        const char  *ipBuf      = ip.c_str();
+//        std::string convertedIp = this->winsockManager->resolveHostNameToIP(ipBuf)[0];
+//        ip = convertedIp;
+//    }
+//    catch (exception e)
+//    {
+//    }
+
+    this->connConfig->ip             = &ip;
+    this->connConfig->port           = port ? port : 7777;
+    this->connConfig->packetSize     = packetSize;
+    this->connConfig->transmissions  = transmissions;
+    this->connConfig->connectionType = connectionType;
+    connManager->createConnection(connConfig);
 }
 
 
@@ -77,11 +99,11 @@ void MainWindow::configureConnection()
  * ----------------------------------------------------------------------------------------------------------------------*/
 void MainWindow::on_actionResolve_host_Name_To_IP_triggered()
 {
-   dialog rDialog;
+    dialog rDialog;
 
-   rDialog.configureHostToIP();
-   rDialog.setModal(true);
-   rDialog.exec();
+    rDialog.configureHostToIP();
+    rDialog.setModal(true);
+    rDialog.exec();
 }
 
 
@@ -106,11 +128,11 @@ void MainWindow::on_actionResolve_host_Name_To_IP_triggered()
  * ----------------------------------------------------------------------------------------------------------------------*/
 void MainWindow::on_actionResolve_IP_To_Host_Name_triggered()
 {
-   dialog rDialog;
+    dialog rDialog;
 
-   rDialog.configureIPToHost();
-   rDialog.setModal(true);
-   rDialog.exec();
+    rDialog.configureIPToHost();
+    rDialog.setModal(true);
+    rDialog.exec();
 }
 
 
@@ -135,11 +157,11 @@ void MainWindow::on_actionResolve_IP_To_Host_Name_triggered()
  * ----------------------------------------------------------------------------------------------------------------------*/
 void MainWindow::on_actionResolve_Service_Name_To_Port_triggered()
 {
-   dualdialog rDialog;
+    dualdialog rDialog;
 
-   rDialog.configureServiceToPort();
-   rDialog.setModal(true);
-   rDialog.exec();
+    rDialog.configureServiceToPort();
+    rDialog.setModal(true);
+    rDialog.exec();
 }
 
 
@@ -164,23 +186,23 @@ void MainWindow::on_actionResolve_Service_Name_To_Port_triggered()
  * ----------------------------------------------------------------------------------------------------------------------*/
 void MainWindow::on_actionResolve_Port_To_Service_Name_triggered()
 {
-   dualdialog rDialog;
+    dualdialog rDialog;
 
-   rDialog.configurePortToService();
-   rDialog.setModal(true);
-   rDialog.exec();
+    rDialog.configurePortToService();
+    rDialog.setModal(true);
+    rDialog.exec();
 }
 
 
 void MainWindow::on_actionConnect_as_Client_triggered()
 {
-   confWindow->setModal(true);
-   confWindow->exec();
+    confWindow->show();
+    connConfig->connectionMode = ConnectionConfigurations::CONNECT_MODE::CLIENT;
 }
 
 
 void MainWindow::on_actionConnect_as_Server_triggered()
 {
-   confWindow->setModal(true);
-   confWindow->exec();
+    confWindow->show();
+    connConfig->connectionMode = ConnectionConfigurations::CONNECT_MODE::SERVER;
 }

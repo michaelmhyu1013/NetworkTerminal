@@ -120,8 +120,8 @@ void dialog::on_pushButton_clicked()
    std::string     id    = ui->id->text().toStdString();
    std::string     input = ui->input->toPlainText().toStdString();
    const char      *s    = input.c_str();
-   vector<QString> values;
-   QString         alias, output;
+   vector<std::string> values;
+   std::string         alias, output;
 
    if (id == "1")
    {
@@ -137,8 +137,8 @@ void dialog::on_pushButton_clicked()
    {
       output = dialogManager->getWinsockManager()->resolveIPToHostName(s);
    }
-   ui->output->setText(output);
-   ui->alias->setText(alias);
+   ui->output->setText(QString::fromStdString(output));
+   ui->alias->setText(QString::fromStdString(alias));
 }
 
 

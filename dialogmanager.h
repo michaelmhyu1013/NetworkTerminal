@@ -1,14 +1,14 @@
-#include "windowssocketmanager.h"
+#include "WindowsSocketManager.h"
 
 #pragma once
 
 class DialogManager
 {
 public:
-   DialogManager();
+    DialogManager();
 
-   WindowsSocketManager *getWinsockManager();
+    WindowsSocketManager *getWinsockManager();
 
 private:
-   WindowsSocketManager *winsockManager;
+    WindowsSocketManager *winsockManager;
 };

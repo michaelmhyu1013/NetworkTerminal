@@ -1,6 +1,4 @@
-#ifndef CONFIGURATIONWINDOW_H
-#define CONFIGURATIONWINDOW_H
-
+#pragma once
 #include <QDialog>
 
 namespace Ui
@@ -12,26 +10,24 @@ class ConfigurationWindow;
 
 class ConfigurationWindow : public QDialog
 {
-   Q_OBJECT
+    Q_OBJECT
 
 private:
-   Ui::ConfigurationWindow *ui;
+    Ui::ConfigurationWindow *ui;
 
 public:
-   explicit ConfigurationWindow(QWidget *parent = nullptr);
-   ~ConfigurationWindow();
+    explicit ConfigurationWindow(QWidget *parent = nullptr);
+    ~ConfigurationWindow();
 
 
-   Ui::ConfigurationWindow *getConfigurationWindowUI()
-   {
-      return(ui);
-   }
+    Ui::ConfigurationWindow *getConfigurationWindowUI()
+    {
+        return(ui);
+    }
 
 signals:
-   void configurationWindowNotify();
+    void configurationWindowNotify();
 
 private slots:
-   void on_okButton_clicked();
+    void on_okButton_clicked();
 };
-
-#endif // CONFIGURATIONWINDOW_H

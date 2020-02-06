@@ -16,23 +16,31 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    Connection.cpp \
+    ConnectionManager.cpp \
+    IOManager.cpp \
+    Socket.cpp \
+    WindowsSocketManager.cpp \
     configurationwindow.cpp \
-    connection.cpp \
     dialog.cpp \
     dialogmanager.cpp \
     dualdialog.cpp \
     main.cpp \
-    mainwindow.cpp \
-    windowssocketmanager.cpp
+    mainwindow.cpp
 
 HEADERS += \
+    CompletionRoutineService.h \
+    Connection.h \
+    ConnectionConfigurations.h \
+    ConnectionManager.h \
+    IOManager.h \
+    Socket.h \
+    WindowsSocketManager.h \
     configurationwindow.h \
-    connection.h \
     dialog.h \
     dialogmanager.h \
     dualdialog.h \
-    mainwindow.h \
-    windowssocketmanager.h
+    mainwindow.h
 
 FORMS += \
     configurationwindow.ui \
