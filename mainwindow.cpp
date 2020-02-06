@@ -59,15 +59,15 @@ void MainWindow::configureConnection()
     int         transmissions  = confWindow->getConfigurationWindowUI()->tranmissionValue->currentText().toInt();
     int         connectionType = confWindow->getConfigurationWindowUI()->connectionUDP->isChecked() ? 0 : 1;
 
-//    try
-//    {
-//        const char  *ipBuf      = ip.c_str();
-//        std::string convertedIp = this->winsockManager->resolveHostNameToIP(ipBuf)[0];
-//        ip = convertedIp;
-//    }
-//    catch (exception e)
-//    {
-//    }
+    try
+    {
+        const char  *ipBuf      = ip.c_str();
+        std::string convertedIp = this->winsockManager->resolveHostNameToIP(ipBuf)[0];
+        ip = convertedIp;
+    }
+    catch (exception e)
+    {
+    }
 
     this->connConfig->ip             = &ip;
     this->connConfig->port           = port ? port : 7777;

@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>Network Terminal</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
@@ -26,7 +26,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>30</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -47,7 +47,6 @@
     <property name="title">
      <string>Network</string>
     </property>
-    <addaction name="actionTest"/>
     <addaction name="actionConnect_as_Client"/>
     <addaction name="actionConnect_as_Server"/>
    </widget>
@@ -58,7 +57,7 @@
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionResolve_host_Name_To_IP">
    <property name="text">
-    <string>Resolve host Name To IP...</string>
+    <string>Resolve Host Name To IP...</string>
    </property>
   </action>
   <action name="actionResolve_IP_To_Host_Name">
