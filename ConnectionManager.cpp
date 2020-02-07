@@ -29,7 +29,7 @@ ConnectionManager::ConnectionManager()
     , events(new WSAEvents())
     , asInfo(new AcceptStruct())
 {
-    asInfo->events                 = events;
+    asInfo->events = events;
 }
 
 
@@ -99,21 +99,14 @@ void ConnectionManager::createTCPServer(ConnectionConfigurations *connConfig)
     {
         qDebug("Bind TCPServer failed");
     }
-    else
-    {
-        qDebug("Bind TCPServer success");
-    }
 
     if (listen(asInfo->listenSocketDescriptor, 5) == SOCKET_ERROR)
     {
         qDebug("listen() failed with error ");
     }
-    else
-    {
-        qDebug("Listening on socket...");
-    }
 
-    if ((events->DETECT_CONNECTION = WSACreateEvent())==0) {
+    if ((events->DETECT_CONNECTION = WSACreateEvent()) == 0)
+    {
         qDebug("Set event");
     }
 
@@ -123,19 +116,11 @@ void ConnectionManager::createTCPServer(ConnectionConfigurations *connConfig)
     {
         qDebug("readThread failed with error");
     }
-    else
-    {
-        qDebug("Create connectThread success");
-    }
 
     if ((acceptThread = CreateThread(NULL, 0, routineService->onAcceptRoutine,
                                      (LPVOID)asInfo, 0, &acceptThreadID)) == NULL)
     {
         qDebug("acceptThread failed with error");
-    }
-    else
-    {
-        qDebug("Create acceptThread success");
     }
 } // ConnectionManager::createTCPServer
 
