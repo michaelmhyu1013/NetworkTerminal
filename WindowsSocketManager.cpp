@@ -9,7 +9,9 @@
  *  --
  *  --	DATE:			Jan 12, 2020
  *  --
- *  --	REVISIONS:		N/A
+ *  --	REVISIONS:		Feb 5, 2020
+ * --                       Michael Yu
+ * --                       - refactor resolveHostNameToIP and resolveIPToHostName to return strings
  *  --
  *  --	DESIGNERS:		Michael Yu
  *  --
@@ -51,13 +53,13 @@ WindowsSocketManager::WindowsSocketManager()
  * ----------------------------------------------------------------------------------------------------------------------*/
 vector<std::string> WindowsSocketManager::resolveHostNameToIP(const char *hostName)
 {
-    vector<std::string>         values;
+    vector<std::string>     values;
     QString                 ip;
     struct          hostent *hp { 0 };
     struct          in_addr my_addr, *addr_p, in;
     char                    **p;
     WSADATA                 wsaData;
-    vector<std::string>         aliases;
+    vector<std::string>     aliases;
 
     WORD                    wVersionRequested = MAKEWORD(2, 2);
 
@@ -133,12 +135,12 @@ vector<std::string> WindowsSocketManager::resolveHostNameToIP(const char *hostNa
  * ----------------------------------------------------------------------------------------------------------------------*/
 std::string WindowsSocketManager::resolveIPToHostName(const char *ip)
 {
-    std::string                 hostName;
+    std::string             hostName;
     int                     a;
     struct          hostent *hp { 0 };
     struct          in_addr my_addr, *addr_p;
     WSADATA                 wsaData;
-    vector<std::string>         aliases;
+    vector<std::string>     aliases;
 
     WORD                    wVersionRequested = MAKEWORD(2, 2);
 

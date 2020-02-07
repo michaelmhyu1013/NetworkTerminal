@@ -26,13 +26,13 @@ private:
     ConfigurationWindow      *confWindow;
     ConnectionConfigurations *connConfig;
     ConnectionManager        *connManager;
-
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
 private slots:
     void configureConnection();
+    void createConnection(ConnectionConfigurations * connConfig);
     void on_actionResolve_host_Name_To_IP_triggered();
     void on_actionResolve_IP_To_Host_Name_triggered();
     void on_actionResolve_Service_Name_To_Port_triggered();

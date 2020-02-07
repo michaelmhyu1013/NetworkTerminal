@@ -34,7 +34,9 @@ HEADERS += \
     ConnectionConfigurations.h \
     ConnectionManager.h \
     IOManager.h \
+    RoutineStructures.h \
     Socket.h \
+    WSAEvents.h \
     WindowsSocketManager.h \
     configurationwindow.h \
     dialog.h \

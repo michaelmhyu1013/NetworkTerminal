@@ -33,6 +33,7 @@
     <property name="title">
      <string>File</string>
     </property>
+    <addaction name="actionUpload_File"/>
    </widget>
    <widget class="QMenu" name="menuResolution">
     <property name="title">
@@ -88,6 +89,11 @@
   <action name="actionConnect_as_Server">
    <property name="text">
     <string>Connect as Server...</string>
+   </property>
+  </action>
+  <action name="actionUpload_File">
+   <property name="text">
+    <string>Upload File...</string>
    </property>
   </action>
  </widget>

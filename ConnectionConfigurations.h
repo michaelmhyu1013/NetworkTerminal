@@ -9,7 +9,7 @@ struct ConnectionConfigurations
     int         port = 7777;
     int         packetSize;
     int         transmissions;
-
+    int         socketConnectionType;
     enum CONNECTION_TYPE
     {
         UDP = 0,

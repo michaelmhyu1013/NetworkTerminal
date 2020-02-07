@@ -39,8 +39,8 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     winsockManager = new WindowsSocketManager();
     confWindow     = new ConfigurationWindow(this);
-    connManager    = new ConnectionManager();
     connConfig     = new ConnectionConfigurations();
+    connManager    = new ConnectionManager();
     connect(confWindow, &ConfigurationWindow::configurationWindowNotify, this, &MainWindow::configureConnection);
 }
 
@@ -69,12 +69,45 @@ void MainWindow::configureConnection()
     {
     }
 
-    this->connConfig->ip             = &ip;
-    this->connConfig->port           = port ? port : 7777;
-    this->connConfig->packetSize     = packetSize;
-    this->connConfig->transmissions  = transmissions;
-    this->connConfig->connectionType = connectionType;
-    connManager->createConnection(connConfig);
+    this->connConfig->ip                   = &ip;
+    this->connConfig->port                 = port ? port : 7777;
+    this->connConfig->packetSize           = packetSize;
+    this->connConfig->transmissions        = transmissions;
+    this->connConfig->connectionType       = connectionType;
+    this->connConfig->socketConnectionType = (connectionType == ConnectionConfigurations::TCP) ? SOCK_STREAM : SOCK_DGRAM;
+
+    createConnection(connConfig);
+} // MainWindow::configureConnection
+
+
+void MainWindow::createConnection(ConnectionConfigurations *connConfig)
+{
+    switch (connConfig->connectionMode)
+    {
+    case 0: // CLIENT
+
+        if (connConfig->connectionType == 0)
+        {
+            connManager->createUDPClient(connConfig); // UDPCLIENT
+        }
+        else
+        {
+            connManager->createTCPClient(connConfig); // TCPCLIENT
+        }
+        break;
+
+    default: // SERVER
+
+        if (connConfig->connectionType == 0)
+        {
+            connManager->createUDPServer(connConfig); // UDPSERVER
+        }
+        else
+        {
+            connManager->createTCPServer(connConfig); // TCPSERVER
+        }
+        break;
+    }
 }
 
 
