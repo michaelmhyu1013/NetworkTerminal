@@ -32,14 +32,30 @@ ConnectionManager::ConnectionManager()
 }
 
 
+void ConnectionManager::uploadFile(ConnectionConfigurations *connConfig, std::wstring fileName)
+{
+    // Create struct for buffer management and connection configurations
+    FileUploadStruct *fs = new FileUploadStruct(connConfig, &outputBuffer, fileName, this->events);
+
+    //  Create thread for file upload
+    if ((fileThread = CreateThread(NULL, 0, threadService->onFileUpload,
+                                   (LPVOID)fs, 0, &fileThreadID)) == NULL)
+    {
+        OutputDebugStringA("fileThread failed with error\n");
+    }
+} // ConnectionManager::createTCPServer
+
+
+/* ------------------------- NETWORKING --------------------------- */
 void ConnectionManager::createUDPClient(ConnectionConfigurations *connConfig)
 {
-    qDebug("udpclient");
+    qDebug("udp");
     memset((char *)&server, 0, sizeof(server));
+    SendStruct *ss = new SendStruct(connConfig, this->events, &outputBuffer);
 
-    if ((n = configureClientAddressStructures(connConfig)) < 0)
+    if ((n = configureClientAddressStructures(connConfig, ss)) < 0)
     {
-        qDebug("Bind UDPClient failed");
+        OutputDebugStringA("Bind UDPClient failed\n");
     }
 }
 
@@ -47,26 +63,32 @@ void ConnectionManager::createUDPClient(ConnectionConfigurations *connConfig)
 void ConnectionManager::createTCPClient(ConnectionConfigurations *connConfig)
 {
     qDebug("tcpclient");
+
+    SendStruct *ss = new SendStruct(connConfig, this->events, &outputBuffer);
     memset((char *)&server, 0, sizeof(struct sockaddr_in));
 
-    if ((n = configureClientAddressStructures(connConfig)) < 0)
+    if ((n = configureClientAddressStructures(connConfig, ss)) < 0)
     {
-        qDebug("Bind TCPClient failed");
+        OutputDebugStringA("Bind TCPClient failed\n");
     }
     else
     {
-        qDebug("Bind TCPClient success");
+        OutputDebugStringA("Bind TCPClient success\n");
     }
 
-    if (connect(asInfo->clientSocketDescriptor, (struct sockaddr *)&server, sizeof(server)) == SOCKET_ERROR)
+    if (connect(ss->clientSocketDescriptor, (struct sockaddr *)&server, sizeof(server)) == SOCKET_ERROR)
     {
-        qDebug("Failed to connect to desired host");
-        closesocket(asInfo->clientSocketDescriptor);
+        OutputDebugStringA("Failed to connect to desired host\n");
+        closesocket(ss->clientSocketDescriptor);
         WSACleanup();
     }
-    // Set event to update UI to allow upload of file
-    // Create thread to read from file to buffer...
-    // Create thread with worker routine to send to server
+
+    //  Create thread for sending; will WFMO for COMPLETE_READ event signaled by fileThread
+    if ((writeThread = CreateThread(NULL, 0, threadService->onSendRoutine,
+                                    (LPVOID)ss, 0, &writeThreadID)) == NULL)
+    {
+        OutputDebugStringA("writeThread failed with error\n");
+    }
 }
 
 
@@ -77,11 +99,11 @@ void ConnectionManager::createUDPServer(ConnectionConfigurations *connConfig)
 
     if ((n = bindServer(connConfig) < 0))
     {
-        qDebug("Bind UDPServer failed");
+        OutputDebugStringA("Bind UDPServer failed\n");
     }
     else
     {
-        qDebug("Bind UDPServer success");
+        OutputDebugStringA("Bind UDPServer success\n");
     }
     // Create read thread
     // loop forever
@@ -95,33 +117,32 @@ void ConnectionManager::createUDPServer(ConnectionConfigurations *connConfig)
 
 void ConnectionManager::createTCPServer(ConnectionConfigurations *connConfig)
 {
-    qDebug("tcpserver");
+    OutputDebugStringA("tcpserver");
 
     memset((char *)&server, 0, sizeof(struct sockaddr_in));
 
     if ((n = bindServer(connConfig) < 0))
     {
-        qDebug("Bind TCPServer failed");
+        OutputDebugStringA("Bind TCPServer failed\n");
     }
 
     if (listen(asInfo->listenSocketDescriptor, 5) == SOCKET_ERROR)
     {
-        qDebug("listen() failed with error ");
+        OutputDebugStringA("listen() failed with error\n");
     }
 
-    //  CREATE THREAD FOR I/O
     if ((connectThread = CreateThread(NULL, 0, threadService->onConnectRoutine,
                                       (LPVOID)asInfo, 0, &connectThreadID)) == NULL)
     {
-        qDebug("readThread failed with error");
+        OutputDebugStringA("readThread failed with error\n");
     }
 
     if ((acceptThread = CreateThread(NULL, 0, threadService->onAcceptRoutine,
                                      (LPVOID)asInfo, 0, &acceptThreadID)) == NULL)
     {
-        qDebug("acceptThread failed with error");
+        OutputDebugStringA("acceptThread failed with error\n");
     }
-} // ConnectionManager::createTCPServer
+}
 
 
 int ConnectionManager::bindServer(ConnectionConfigurations *connConfig)
@@ -146,11 +167,11 @@ int ConnectionManager::bindServer(ConnectionConfigurations *connConfig)
 }
 
 
-int ConnectionManager::configureClientAddressStructures(ConnectionConfigurations *connConfig)
+int ConnectionManager::configureClientAddressStructures(ConnectionConfigurations *connConfig, SendStruct *ss)
 {
     WSAStartup(wVersionRequested, &WSAData);
 
-    if ((asInfo->clientSocketDescriptor = WSASocket(PF_INET, connConfig->socketConnectionType, 0, NULL, 0, WSA_FLAG_OVERLAPPED)) == INVALID_SOCKET)
+    if ((ss->clientSocketDescriptor = WSASocket(PF_INET, connConfig->socketConnectionType, 0, NULL, 0, WSA_FLAG_OVERLAPPED)) == INVALID_SOCKET)
     {
         qDebug("Can't create socket");
         return(-1);

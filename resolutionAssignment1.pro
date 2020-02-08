@@ -32,6 +32,7 @@ HEADERS += \
     Connection.h \
     ConnectionConfigurations.h \
     ConnectionManager.h \
+    ErrorHandler.h \
     IOManager.h \
     RoutineStructures.h \
     Socket.h \

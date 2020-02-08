@@ -28,6 +28,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include <QDialog>
+#include <QFileDialog>
 #include <QTextEdit>
 #include <QTextStream>
 #include <ui_configurationwindow.h>
@@ -85,6 +86,9 @@ void MainWindow::createConnection(ConnectionConfigurations *connConfig)
     switch (connConfig->connectionMode)
     {
     case 0: // CLIENT
+        //enable file upload button
+
+        ui->actionUpload_File->setEnabled(true);
 
         if (connConfig->connectionType == 0)
         {
@@ -238,4 +242,13 @@ void MainWindow::on_actionConnect_as_Server_triggered()
 {
     confWindow->show();
     connConfig->connectionMode = ConnectionConfigurations::CONNECT_MODE::SERVER;
+}
+
+
+void MainWindow::on_actionUpload_File_triggered()
+{
+    QString fileName    = QFileDialog::getOpenFileName(this, tr("Select Text File to Upload"), "./", tr("Text files (*.txt)"));
+    std::wstring s_fileName = fileName.toStdWString();
+
+    connManager->uploadFile(connConfig, s_fileName);
 }

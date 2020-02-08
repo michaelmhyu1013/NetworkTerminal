@@ -32,11 +32,13 @@ public:
 
 private slots:
     void configureConnection();
-    void createConnection(ConnectionConfigurations * connConfig);
+    void createConnection(ConnectionConfigurations *connConfig);
+
     void on_actionResolve_host_Name_To_IP_triggered();
     void on_actionResolve_IP_To_Host_Name_triggered();
     void on_actionResolve_Service_Name_To_Port_triggered();
     void on_actionResolve_Port_To_Service_Name_triggered();
     void on_actionConnect_as_Client_triggered();
     void on_actionConnect_as_Server_triggered();
+    void on_actionUpload_File_triggered();
 };

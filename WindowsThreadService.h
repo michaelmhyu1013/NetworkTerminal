@@ -32,13 +32,13 @@ struct WindowsThreadService
 {
     static DWORD WINAPI onSendRoutine(LPVOID param)
     {
-        return(((IOManager *)param)->handleSend(nullptr));
+        return(((IOManager *)param)->handleSend((SendStruct *)param));
     }
 
 
     static DWORD WINAPI onFileUpload(LPVOID param)
     {
-        return(((IOManager *)param)->handleFileRead(nullptr));
+        return(((IOManager *)param)->handleFileRead((FileUploadStruct *)param));
     }
 
 

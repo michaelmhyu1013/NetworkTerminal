@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ConnectionConfigurations.h"
 #include "RoutineStructures.h"
 #include "WSAEvents.h"
 #include <windows.h>
@@ -22,8 +23,8 @@ class IOManager
 {
 public:
     IOManager();
-    DWORD handleSend(LPVOID input);
-    DWORD handleFileRead(LPVOID input);
+    DWORD handleSend(SendStruct *input);
+    DWORD handleFileRead(FileUploadStruct *input);
     DWORD handleConnect(AcceptStruct *input);
     DWORD handleAccept(AcceptStruct *input);
 
