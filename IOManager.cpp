@@ -29,13 +29,10 @@ IOManager::IOManager()
 {
 }
 
-
-DWORD IOManager::handleRead(LPVOID input)
-{
-}
+/* -------------------------- THREAD FUNCTIONS ------------------------ */
 
 
-DWORD IOManager::handleWrite(LPVOID input)
+DWORD IOManager::handleSend(LPVOID input)
 {
 }
 
@@ -49,10 +46,10 @@ DWORD IOManager::handleAccept(AcceptStruct *input)
 {
     while (TRUE)
     {
+        // TODO: implement as AcceptEx()
         if ((input->acceptSocketDescriptor = accept(input->listenSocketDescriptor, NULL, NULL)) == INVALID_SOCKET)
         {
-            int n = WSAGetLastError();
-            qDebug("Listen failed");
+            qDebug("Listen failed: %d", WSAGetLastError());
         }
 
         if (WSASetEvent(input->events->DETECT_CONNECTION) == FALSE)
@@ -67,7 +64,7 @@ DWORD IOManager::handleAccept(AcceptStruct *input)
 }
 
 
-DWORD IOManager::handleConnect(WSAEvents *input)
+DWORD IOManager::handleConnect(AcceptStruct *input)
 {
     DWORD                Flags;
     LPSOCKET_INFORMATION SocketInfo;
@@ -75,7 +72,7 @@ DWORD IOManager::handleConnect(WSAEvents *input)
     DWORD                Index;
     DWORD                RecvBytes;
 
-    EventArray[0] = input->DETECT_CONNECTION;
+    EventArray[0] = input->events->DETECT_CONNECTION; // Dummy event to put thread into alertable state for completion routine
 
     while (TRUE)
     {
@@ -85,7 +82,8 @@ DWORD IOManager::handleConnect(WSAEvents *input)
         {
             qDebug("Waiting for connection");
 
-            Index = WSAWaitForMultipleEvents(1, EventArray, FALSE, WSA_INFINITE, FALSE);
+            // Set last param to TRUE; automatically returns from this function when the completion routine completes
+            Index = WSAWaitForMultipleEvents(1, EventArray, FALSE, WSA_INFINITE, TRUE);
 
             if (Index == WSA_WAIT_FAILED)
             {
@@ -96,14 +94,13 @@ DWORD IOManager::handleConnect(WSAEvents *input)
             {
                 // An accept() call event is ready - break the wait loop
                 qDebug("CONNECTION RECEIVED");
-                WSAResetEvent(EventArray[0]);
                 break;
             }
         }
 
-        if (WSAResetEvent(EventArray[0]))
+        if (!WSAResetEvent(EventArray[0]))
         {
-            qDebug("Event reset in handleConnect");
+            qDebug("Failed to reset event in handleConnect");
         }
         // Create a socket information structure to associate with the accepted socket.
 
@@ -112,5 +109,128 @@ DWORD IOManager::handleConnect(WSAEvents *input)
         {
             qDebug("GlobalAlloc() failed with error");
         }
+        // TODO: IO PORTION IS DONE HERE --------------------------
+
+        // Fill in the details of our accepted socket.
+
+        SocketInfo->Socket = input->acceptSocketDescriptor;
+        ZeroMemory(&(SocketInfo->Overlapped), sizeof(WSAOVERLAPPED));
+        SocketInfo->BytesSEND   = 0;
+        SocketInfo->BytesRECV   = 0;
+        SocketInfo->DataBuf.len = BUFFER_SIZE;
+        SocketInfo->DataBuf.buf = SocketInfo->Buffer;
+
+        Flags = 0;
+
+        qDebug("Socket %d connected\n", input->acceptSocketDescriptor);
+
+        // TODO: check if RecvBytes should be set to NULL
+        if (WSARecv(SocketInfo->Socket, &(SocketInfo->DataBuf), 1, &RecvBytes, &Flags,
+                    &(SocketInfo->Overlapped), readRoutine) == SOCKET_ERROR)
+        {
+            if (WSAGetLastError() != WSA_IO_PENDING)
+            {
+                qDebug("WSARecv() failed with error");
+                return(FALSE);
+            }
+        }
+        else
+        {
+            qDebug("Posting WSARecv");
+        }
     }
 } // IOManager::handleConnect
+
+
+/* -------------------------- COMPLETION ROUTINES ------------------------ */
+
+
+void IOManager::readRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags)
+{
+    DWORD SendBytes, RecvBytes;
+    DWORD Flags;
+
+    // Reference the WSAOVERLAPPED structure as a SOCKET_INFORMATION structure
+    LPSOCKET_INFORMATION SI = (LPSOCKET_INFORMATION)Overlapped;
+
+    if (Error != 0)
+    {
+        qDebug("I/O operation failed with error %lu", Error);
+    }
+
+    if (BytesTransferred == 0)
+    {
+        qDebug("Closing socket: %d", SI->Socket);
+    }
+
+    if (Error != 0 || BytesTransferred == 0)
+    {
+        closesocket(SI->Socket);
+        GlobalFree(SI);
+        return;
+    }
+    // Check to see if the BytesRECV field equals zero. If this is so, then
+    // this means a WSARecv call just completed so update the BytesRECV field
+    // with the BytesTransferred value from the completed WSARecv() call.
+
+    if (SI->BytesRECV == 0)
+    {
+        SI->BytesRECV = BytesTransferred;
+        SI->BytesSEND = 0;
+    }
+    else
+    {
+        SI->BytesSEND += BytesTransferred;
+    }
+
+    if (SI->BytesRECV > SI->BytesSEND)
+    {
+        // Post another WSASend() request.
+        // Since WSASend() is not gauranteed to send all of the bytes requested,
+        // continue posting WSASend() calls until all received bytes are sent.
+
+        ZeroMemory(&(SI->Overlapped), sizeof(WSAOVERLAPPED));
+
+        SI->DataBuf.buf = SI->Buffer + SI->BytesSEND;
+        SI->DataBuf.len = SI->BytesRECV - SI->BytesSEND;
+
+        // TODO : WRITE TO FILE RATHER THAN SEND BACK TO CLIENT...
+
+        if (WSASend(SI->Socket, &(SI->DataBuf), 1, NULL, 0,
+                    &(SI->Overlapped), readRoutine) == SOCKET_ERROR)
+        {
+            if (WSAGetLastError() != WSA_IO_PENDING)
+            {
+                qDebug("WSASend() failed with error %d", WSAGetLastError());
+                return;
+            }
+        }
+    }
+    else
+    {
+        SI->BytesRECV = 0;
+
+        // Now that there are no more bytes to send post another WSARecv() request.
+
+        Flags = 0;
+        ZeroMemory(&(SI->Overlapped), sizeof(WSAOVERLAPPED));
+
+        SI->DataBuf.len = BUFFER_SIZE;
+        SI->DataBuf.buf = SI->Buffer;
+
+        if (WSARecv(SI->Socket, &(SI->DataBuf), 1, &RecvBytes, &Flags,
+                    &(SI->Overlapped), readRoutine) == SOCKET_ERROR)
+        {
+            if (WSAGetLastError() != WSA_IO_PENDING)
+            {
+                qDebug("WSARecv() failed with error %d", WSAGetLastError());
+                return;
+            }
+        }
+    }
+} // IOManager::readRoutine
+
+
+void IOManager::sendRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags)
+{
+} // IOManager::readRoutine

@@ -1,12 +1,13 @@
 #pragma once
 
-#include "CompletionRoutineService.h"
 #include "Connection.h"
 #include "ConnectionConfigurations.h"
 #include "RoutineStructures.h"
+#include "WindowsThreadService.h"
 #include "WSAEvents.h"
+#include <winsock2.h>
 
-class CompletionRoutineService;
+class WindowsThreadService;
 
 class ConnectionManager
 {
@@ -20,11 +21,11 @@ public:
 
 protected:
     ConnectionConfigurations connConfig;
-    CompletionRoutineService *routineService;
+    WindowsThreadService     *threadService;
     WSADATA                  WSAData;
     WORD                     wVersionRequested = MAKEWORD(2, 2);
     HANDLE                   acceptThread, readThread, writeThread, connectThread;
-    SOCKADDR_IN              client, server;
+    struct sockaddr_in       client, server;
     struct hostent           *hp;
     WSAEvents                *events;
     DWORD                    acceptThreadID, readThreadID, writeThreadID, connectThreadID;

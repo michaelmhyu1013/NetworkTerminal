@@ -1,6 +1,6 @@
 #pragma once
-#include <winsock2.h>
 #include <windows.h>
+#include <winsock2.h>
 
 
 /*------------------------------------------------------------------------------------------------------------------
@@ -23,12 +23,11 @@
  * -- for overlapped I/O synchronization.
  * ----------------------------------------------------------------------------------------------------------------------*/
 
-constexpr static int EVENT_COUNTS                  = 10;
-constexpr static int ACKNOWLEDGEMENT_HANDLES_COUNT = 3;
-
+constexpr static int EVENT_COUNTS                  = 6;
 
 struct WSAEvents
 {
+    // FILE I/O STATES
     WSAEVENT DETECT_FILE_INPUT   = WSACreateEvent();
     WSAEVENT COMPLETE_FILE_INPUT = WSACreateEvent();
 
@@ -39,6 +38,7 @@ struct WSAEvents
     // WRITING STATES
     WSAEVENT COMPLETE_WRITE = WSACreateEvent();
 
+    // TCP CONNECTION STATES
     WSAEVENT DETECT_CONNECTION = WSACreateEvent();
 
     WSAEvents() {}

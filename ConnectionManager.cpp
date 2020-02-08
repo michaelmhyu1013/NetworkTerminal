@@ -22,10 +22,9 @@
 #include "ConnectionManager.h"
 #include <QDebug>
 #include <QString>
-#include <winsock2.h>
 
 ConnectionManager::ConnectionManager()
-    : routineService(new CompletionRoutineService())
+    : threadService(new WindowsThreadService())
     , events(new WSAEvents())
     , asInfo(new AcceptStruct())
 {
@@ -41,10 +40,6 @@ void ConnectionManager::createUDPClient(ConnectionConfigurations *connConfig)
     if ((n = configureClientAddressStructures(connConfig)) < 0)
     {
         qDebug("Bind UDPClient failed");
-    }
-    else
-    {
-        qDebug("Bind UDPClient success");
     }
 }
 
@@ -62,13 +57,22 @@ void ConnectionManager::createTCPClient(ConnectionConfigurations *connConfig)
     {
         qDebug("Bind TCPClient success");
     }
+
+    if (connect(asInfo->clientSocketDescriptor, (struct sockaddr *)&server, sizeof(server)) == SOCKET_ERROR)
+    {
+        qDebug("Failed to connect to desired host");
+        closesocket(asInfo->clientSocketDescriptor);
+        WSACleanup();
+    }
+    // Set event to update UI to allow upload of file
+    // Create thread to read from file to buffer...
+    // Create thread with worker routine to send to server
 }
 
 
 void ConnectionManager::createUDPServer(ConnectionConfigurations *connConfig)
 {
     qDebug("udpserver");
-
     memset((char *)&server, 0, sizeof(server));
 
     if ((n = bindServer(connConfig) < 0))
@@ -105,19 +109,14 @@ void ConnectionManager::createTCPServer(ConnectionConfigurations *connConfig)
         qDebug("listen() failed with error ");
     }
 
-    if ((events->DETECT_CONNECTION = WSACreateEvent()) == 0)
-    {
-        qDebug("Set event");
-    }
-
     //  CREATE THREAD FOR I/O
-    if ((connectThread = CreateThread(NULL, 0, routineService->onConnectRoutine,
-                                      (LPVOID)events, 0, &connectThreadID)) == NULL)
+    if ((connectThread = CreateThread(NULL, 0, threadService->onConnectRoutine,
+                                      (LPVOID)asInfo, 0, &connectThreadID)) == NULL)
     {
         qDebug("readThread failed with error");
     }
 
-    if ((acceptThread = CreateThread(NULL, 0, routineService->onAcceptRoutine,
+    if ((acceptThread = CreateThread(NULL, 0, threadService->onAcceptRoutine,
                                      (LPVOID)asInfo, 0, &acceptThreadID)) == NULL)
     {
         qDebug("acceptThread failed with error");
@@ -151,7 +150,7 @@ int ConnectionManager::configureClientAddressStructures(ConnectionConfigurations
 {
     WSAStartup(wVersionRequested, &WSAData);
 
-    if ((asInfo->listenSocketDescriptor = WSASocket(PF_INET, connConfig->socketConnectionType, 0, NULL, 0, WSA_FLAG_OVERLAPPED)) == INVALID_SOCKET)
+    if ((asInfo->clientSocketDescriptor = WSASocket(PF_INET, connConfig->socketConnectionType, 0, NULL, 0, WSA_FLAG_OVERLAPPED)) == INVALID_SOCKET)
     {
         qDebug("Can't create socket");
         return(-1);

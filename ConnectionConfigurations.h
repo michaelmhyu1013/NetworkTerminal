@@ -10,6 +10,7 @@ struct ConnectionConfigurations
     int         packetSize;
     int         transmissions;
     int         socketConnectionType;
+
     enum CONNECTION_TYPE
     {
         UDP = 0,

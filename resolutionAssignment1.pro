@@ -29,7 +29,6 @@ SOURCES += \
     mainwindow.cpp
 
 HEADERS += \
-    CompletionRoutineService.h \
     Connection.h \
     ConnectionConfigurations.h \
     ConnectionManager.h \
@@ -38,6 +37,7 @@ HEADERS += \
     Socket.h \
     WSAEvents.h \
     WindowsSocketManager.h \
+    WindowsThreadService.h \
     configurationwindow.h \
     dialog.h \
     dialogmanager.h \
