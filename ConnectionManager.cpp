@@ -33,21 +33,7 @@ ConnectionManager::ConnectionManager()
 }
 
 
-void ConnectionManager::uploadFile(ConnectionConfigurations *connConfig, std::wstring fileName)
-{
-    // Create struct for buffer management and connection configurations
-    FileUploadStruct *fs = new FileUploadStruct(fileName, connConfig, this->events, this->outputBuffer);
-
-    //  Create thread for file upload
-    if ((fileThread = CreateThread(NULL, 0, threadService->onFileUpload,
-                                   (LPVOID)fs, 0, &fileThreadID)) == NULL)
-    {
-        OutputDebugStringA("fileThread failed with error\n");
-    }
-} // ConnectionManager::createTCPServer
-
-
-/* ------------------------- NETWORKING --------------------------- */
+/* ------------------------- MAIN NETWORKING --------------------------- */
 void ConnectionManager::createUDPClient(ConnectionConfigurations *connConfig)
 {
     memset((char *)&server, 0, sizeof(server));
@@ -151,6 +137,25 @@ void ConnectionManager::createTCPServer(ConnectionConfigurations *connConfig)
     }
 }
 
+/* ------------------------- FILE PROCESSING - TODO: move to separate class --------------------------- */
+
+
+void ConnectionManager::uploadFile(ConnectionConfigurations *connConfig, std::wstring fileName)
+{
+    // Create struct for buffer management and connection configurations
+    FileUploadStruct *fs = new FileUploadStruct(fileName, connConfig, this->events, this->outputBuffer);
+
+    //  Create thread for file upload
+    if ((fileThread = CreateThread(NULL, 0, threadService->onFileUpload,
+                                   (LPVOID)fs, 0, &fileThreadID)) == NULL)
+    {
+        OutputDebugStringA("fileThread failed with error\n");
+    }
+}
+
+
+/* -------------------------------- UTIL FUNCTIONS - TODO: move to separate class ------------------------------ */
+
 
 int ConnectionManager::bindServer(ConnectionConfigurations *connConfig)
 {
@@ -170,29 +175,6 @@ int ConnectionManager::bindServer(ConnectionConfigurations *connConfig)
         qDebug("Can't bind name to socket");
         return(-2);
     }
-    return(0);
-}
-
-
-int ConnectionManager::configureClientAddressStructures(ConnectionConfigurations *connConfig, SendStruct *ss)
-{
-    WSAStartup(wVersionRequested, &WSAData);
-
-    if ((ss->clientSocketDescriptor = WSASocket(PF_INET, connConfig->socketConnectionType, 0, NULL, 0, WSA_FLAG_OVERLAPPED)) == INVALID_SOCKET)
-    {
-        qDebug("Can't create socket");
-        return(-1);
-    }
-    server.sin_family = AF_INET;
-    server.sin_port   = htons(connConfig->port);
-
-    if ((hp = gethostbyname((connConfig->ip)->c_str())) == NULL)
-    {
-        fprintf(stderr, "Can't get server's IP address\n");
-        qDebug("Can't get server's IP address\n");
-        return(-1);
-    }
-    memcpy((char *)&server.sin_addr, hp->h_addr, hp->h_length);
     return(0);
 }
 
@@ -218,5 +200,28 @@ int ConnectionManager::bindUDPClient(sockaddr_in &client, SendStruct *ss)
         return(-2);
     }
     qDebug("Port assigned is %d\n", ntohs(client.sin_port));
+    return(0);
+}
+
+
+int ConnectionManager::configureClientAddressStructures(ConnectionConfigurations *connConfig, SendStruct *ss)
+{
+    WSAStartup(wVersionRequested, &WSAData);
+
+    if ((ss->clientSocketDescriptor = WSASocket(PF_INET, connConfig->socketConnectionType, 0, NULL, 0, WSA_FLAG_OVERLAPPED)) == INVALID_SOCKET)
+    {
+        qDebug("Can't create socket");
+        return(-1);
+    }
+    server.sin_family = AF_INET;
+    server.sin_port   = htons(connConfig->port);
+
+    if ((hp = gethostbyname((connConfig->ip)->c_str())) == NULL)
+    {
+        fprintf(stderr, "Can't get server's IP address\n");
+        qDebug("Can't get server's IP address\n");
+        return(-1);
+    }
+    memcpy((char *)&server.sin_addr, hp->h_addr, hp->h_length);
     return(0);
 }
