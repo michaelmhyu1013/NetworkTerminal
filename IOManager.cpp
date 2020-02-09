@@ -111,11 +111,12 @@ DWORD IOManager::handleFileRead(FileUploadStruct *input)
 {
     qDebug("handle File Read invoked");
     HANDLE        hFile;
-    DWORD         dwBytesRead, totalBytesRead{ 0 };// 64 MB file size
-    int           n, bufferSize = input->connConfig->packetSize;
+    DWORD         dwBytesRead, totalBytesRead{ 0 };
     const wchar_t *filename;
+    int           n;
+    int           bufferSize = input->connConfig->packetSize;
 
-    char          ReadBuffer[bufferSize]; // The buffer size should be defined somewhere
+    char          ReadBuffer[bufferSize];
     memset(&ReadBuffer, 0, sizeof(ReadBuffer));
 
     filename = input->fileName.c_str();
@@ -137,7 +138,6 @@ DWORD IOManager::handleFileRead(FileUploadStruct *input)
     }
     PurgeComm(hFile, PURGE_RXCLEAR);
 
-    //It should equal the buffer size - 1 to give room for null character
     while ((n = ReadFile(hFile, input->outputBuffer, MAX_FILE_SIZE, &dwBytesRead, NULL)))
     {
         if (dwBytesRead == 0)
@@ -151,15 +151,6 @@ DWORD IOManager::handleFileRead(FileUploadStruct *input)
             qDebug("ReadFile exited normally");
             break;
         }
-        // TODO: REFACTOR FOLLOW BLOCK INTO FUNCTION.
-//        std::string newBuffer{ ReadBuffer };
-//        std::string currentBuffer{ input->outputBuffer };
-//        currentBuffer += newBuffer;
-//        std::string store{ currentBuffer };
-//        char        tempBuffer[store.size() + 1];
-//        std::copy(currentBuffer.begin(), currentBuffer.end(), tempBuffer);
-//        input->outputBuffer = tempBuffer;
-
         totalBytesRead += dwBytesRead;
         memset(&ReadBuffer, 0, sizeof(ReadBuffer));
     }
@@ -275,8 +266,6 @@ DWORD IOManager::handleConnect(AcceptStruct *input)
 
 
 /* -------------------------- COMPLETION ROUTINES ------------------------ */
-
-
 void IOManager::readRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags)
 {
     DWORD WrittenBytes, RecvBytes;

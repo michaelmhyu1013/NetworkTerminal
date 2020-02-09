@@ -4,6 +4,7 @@
 #include "ConnectionConfigurations.h"
 #include "Definitions.h"
 #include "RoutineStructures.h"
+#include "TimeClock.h"
 #include "WindowsThreadService.h"
 #include "WSAEvents.h"
 #include <queue>
@@ -21,10 +22,9 @@ public:
     void createTCPServer(ConnectionConfigurations *connConfig);
     void uploadFile(ConnectionConfigurations *connConfig, std::wstring fileName);
 
+    inline TimeClock getClock() { return(this->clock); }
 
 protected:
-//    ConnectionConfigurations connConfig;
-    WORD                 wVersionRequested = MAKEWORD(2, 2);
     WindowsThreadService *threadService;
     WSADATA              WSAData;
     HANDLE               acceptThread, readThread, writeThread, connectThread, fileThread;
@@ -36,7 +36,9 @@ protected:
     int                  n, ns, bytes_to_read, port, err;
     char                 *host, *bp, **pptr;
 
-    char                 *outputBuffer = new char[MAX_FILE_SIZE];
+    TimeClock            clock;
+    WORD                 wVersionRequested = MAKEWORD(2, 2);
+    char                 *outputBuffer     = new char[MAX_FILE_SIZE];
 
 private:
     int bindServer(ConnectionConfigurations *connConfig);

@@ -20,6 +20,7 @@ SOURCES += \
     ConnectionManager.cpp \
     IOManager.cpp \
     Socket.cpp \
+    TimeClock.cpp \
     WindowsSocketManager.cpp \
     configurationwindow.cpp \
     dialog.cpp \
@@ -36,6 +37,7 @@ HEADERS += \
     IOManager.h \
     RoutineStructures.h \
     Socket.h \
+    TimeClock.h \
     WSAEvents.h \
     WindowsSocketManager.h \
     WindowsThreadService.h \
