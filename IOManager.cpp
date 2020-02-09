@@ -24,13 +24,29 @@
  * ----------------------------------------------------------------------------------------------------------------------*/
 #include "IOManager.h"
 #include <cstring>
+#include <fstream>
+#include <iostream>
 #include <QDebug>
 
 IOManager::IOManager()
 {
 }
 
+
 /* -------------------------- THREAD FUNCTIONS ------------------------ */
+
+
+DWORD WINAPI IOManager::onWriteToFile(LPVOID param)
+{
+    qDebug("Executing write to file thread");
+    char         *buffer = static_cast<char *>(param);
+
+    std::fstream outputFile;
+    std::string  strBuffer{ buffer };
+    outputFile.open("output.txt", std::fstream::app);
+    outputFile << strBuffer;
+    outputFile.close();
+}
 
 
 DWORD IOManager::handleSend(SendStruct *input)
@@ -69,7 +85,7 @@ DWORD IOManager::handleSend(SendStruct *input)
     ZeroMemory(&(SocketInfo->Overlapped), sizeof(WSAOVERLAPPED));
     SocketInfo->BytesSEND   = 0;
     SocketInfo->BytesRECV   = 0;
-    SocketInfo->DataBuf.len = BUFFER_SIZE;
+    SocketInfo->DataBuf.len = MAX_FILE_SIZE;
     SocketInfo->DataBuf.buf = input->outputBuffer;
 
     Flags = 0;
@@ -122,7 +138,7 @@ DWORD IOManager::handleFileRead(FileUploadStruct *input)
     PurgeComm(hFile, PURGE_RXCLEAR);
 
     //It should equal the buffer size - 1 to give room for null character
-    while ((n = ReadFile(hFile, input->outputBuffer, bufferSize, &dwBytesRead, NULL)))
+    while ((n = ReadFile(hFile, input->outputBuffer, MAX_FILE_SIZE, &dwBytesRead, NULL)))
     {
         if (dwBytesRead == 0)
         {
@@ -233,7 +249,7 @@ DWORD IOManager::handleConnect(AcceptStruct *input)
         ZeroMemory(&(SocketInfo->Overlapped), sizeof(WSAOVERLAPPED));
         SocketInfo->BytesSEND   = 0;
         SocketInfo->BytesRECV   = 0;
-        SocketInfo->DataBuf.len = BUFFER_SIZE;
+        SocketInfo->DataBuf.len = MAX_FILE_SIZE;
         SocketInfo->DataBuf.buf = SocketInfo->Buffer;
 
         Flags = 0;
@@ -306,20 +322,19 @@ void IOManager::readRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED
         // continue posting WSASend() calls until all received bytes are sent.
 
         ZeroMemory(&(SI->Overlapped), sizeof(WSAOVERLAPPED));
-
         SI->DataBuf.buf = SI->Buffer + SI->BytesSEND;
         SI->DataBuf.len = SI->BytesRECV - SI->BytesSEND;
 
         // TODO : WRITE TO FILE RATHER THAN SEND BACK TO CLIENT...
+        //  Create thread for file upload
 
-        if (WSASend(SI->Socket, &(SI->DataBuf), 1, NULL, 0,
-                    &(SI->Overlapped), readRoutine) == SOCKET_ERROR)
+        HANDLE writeThread;
+        DWORD  writeThreadID;
+
+        if ((writeThread = CreateThread(NULL, 0, onWriteToFile,
+                                        (LPVOID)SI->DataBuf.buf, 0, &writeThreadID)) == NULL)
         {
-            if (WSAGetLastError() != WSA_IO_PENDING)
-            {
-                qDebug("WSASend() failed with error %d", WSAGetLastError());
-                return;
-            }
+            qDebug("writeThread creation failed with error");
         }
     }
     else
@@ -331,7 +346,7 @@ void IOManager::readRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED
         Flags = 0;
         ZeroMemory(&(SI->Overlapped), sizeof(WSAOVERLAPPED));
 
-        SI->DataBuf.len = BUFFER_SIZE;
+        SI->DataBuf.len = MAX_FILE_SIZE;
         SI->DataBuf.buf = SI->Buffer;
 
         if (WSARecv(SI->Socket, &(SI->DataBuf), 1, &RecvBytes, &Flags,

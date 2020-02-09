@@ -2,13 +2,12 @@
 
 #include "Connection.h"
 #include "ConnectionConfigurations.h"
+#include "Definitions.h"
 #include "RoutineStructures.h"
 #include "WindowsThreadService.h"
 #include "WSAEvents.h"
 #include <queue>
 #include <winsock2.h>
-
-#define MAX_FILE_SIZE    20000000
 
 class WindowsThreadService;
 
