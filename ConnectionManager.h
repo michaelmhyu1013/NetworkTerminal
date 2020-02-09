@@ -33,8 +33,7 @@ protected:
     WSAEvents            *events;
     DWORD                acceptThreadID, readThreadID, writeThreadID, connectThreadID, fileThreadID;
     AcceptStruct         *asInfo;
-    int                  n, ns, bytes_to_read, port, err;
-    char                 *host, *bp, **pptr;
+    int                  n;
 
     TimeClock            clock;
     WORD                 wVersionRequested = MAKEWORD(2, 2);
@@ -42,5 +41,6 @@ protected:
 
 private:
     int bindServer(ConnectionConfigurations *connConfig);
+    int bindUDPClient(sockaddr_in &client, SendStruct *ss);
     int configureClientAddressStructures(ConnectionConfigurations *connConfig, SendStruct *ss);
 };

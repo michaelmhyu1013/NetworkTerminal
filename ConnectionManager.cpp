@@ -50,13 +50,19 @@ void ConnectionManager::uploadFile(ConnectionConfigurations *connConfig, std::ws
 /* ------------------------- NETWORKING --------------------------- */
 void ConnectionManager::createUDPClient(ConnectionConfigurations *connConfig)
 {
-    qDebug("udp");
     memset((char *)&server, 0, sizeof(server));
+    memset((char *)&client, 0, sizeof(client));
+
     SendStruct *ss = new SendStruct(connConfig, this->events, this->outputBuffer);
 
     if ((n = configureClientAddressStructures(connConfig, ss)) < 0)
     {
-        OutputDebugStringA("Bind UDPClient failed\n");
+        qDebug("Configure UDPClient Struct failed: %d", n);
+    }
+
+    if ((n = bindUDPClient(client, ss)) < 0)
+    {
+        qDebug("Bind to UDP server failed: %d", n);
     }
 }
 
@@ -187,5 +193,30 @@ int ConnectionManager::configureClientAddressStructures(ConnectionConfigurations
         return(-1);
     }
     memcpy((char *)&server.sin_addr, hp->h_addr, hp->h_length);
+    return(0);
+}
+
+
+int ConnectionManager::bindUDPClient(sockaddr_in &client, SendStruct *ss)
+{
+    int client_len;
+
+    client.sin_family      = AF_INET;
+    client.sin_port        = htons(0); // bind to any available port
+    client.sin_addr.s_addr = htonl(INADDR_ANY);
+    client_len             = sizeof(client);
+
+    if (bind(ss->clientSocketDescriptor, (struct sockaddr *)&client, sizeof(client)) == -1)
+    {
+        perror("Can't bind name to socket");
+        return(-1);
+    }
+
+    if (getsockname(ss->clientSocketDescriptor, (struct sockaddr *)&client, &client_len) < 0)
+    {
+        perror("getsockname: \n");
+        return(-2);
+    }
+    qDebug("Port assigned is %d\n", ntohs(client.sin_port));
     return(0);
 }

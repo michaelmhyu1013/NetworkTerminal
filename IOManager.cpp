@@ -85,7 +85,7 @@ DWORD IOManager::handleSend(SendStruct *input)
     ZeroMemory(&(SocketInfo->Overlapped), sizeof(WSAOVERLAPPED));
     SocketInfo->BytesSEND   = 0;
     SocketInfo->BytesRECV   = 0;
-    SocketInfo->DataBuf.len = MAX_FILE_SIZE;
+    SocketInfo->DataBuf.len = input->connConfig->packetSize;
     SocketInfo->DataBuf.buf = input->outputBuffer;
 
     Flags = 0;
@@ -138,7 +138,7 @@ DWORD IOManager::handleFileRead(FileUploadStruct *input)
     }
     PurgeComm(hFile, PURGE_RXCLEAR);
 
-    while ((n = ReadFile(hFile, input->outputBuffer, MAX_FILE_SIZE, &dwBytesRead, NULL)))
+    while ((n = ReadFile(hFile, input->outputBuffer, input->connConfig->packetSize, &dwBytesRead, NULL)))
     {
         if (dwBytesRead == 0)
         {
