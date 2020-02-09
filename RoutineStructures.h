@@ -15,13 +15,13 @@ struct AcceptStruct
 
 struct SendStruct
 {
+    SOCKET                   clientSocketDescriptor; // client's socket to bind to host
     ConnectionConfigurations *connConfig;
     WSAEvents                *events;
-    SOCKET                   clientSocketDescriptor; // client's socket to bind to host
-    std::queue<std::string>  *outputBuffer;
+    char                     *outputBuffer;
 
     SendStruct(ConnectionConfigurations *connConfig, WSAEvents *events,
-               std::queue<std::string> *outputBuffer)
+               char *outputBuffer)
         : connConfig(connConfig)
         , events(events)
         , outputBuffer(outputBuffer) {}
@@ -29,15 +29,15 @@ struct SendStruct
 
 struct FileUploadStruct
 {
-    ConnectionConfigurations *connConfig;
-    std::queue<std::string>  *outputBuffer;
     std::wstring             fileName;
+    ConnectionConfigurations *connConfig;
+    char                     *outputBuffer;
     WSAEvents                *events;
 
-    FileUploadStruct(ConnectionConfigurations *connConfig, std::queue<std::string> *outputBuffer
-                     , std::wstring fileName, WSAEvents *events)
-        : connConfig(connConfig)
-        , outputBuffer(outputBuffer)
-        , fileName(fileName)
-        , events(events) {}
+    FileUploadStruct(std::wstring fileName, ConnectionConfigurations *connConfig
+                     , WSAEvents *events, char *outputBuffer)
+        : fileName(fileName)
+        , connConfig(connConfig)
+        , events(events)
+        , outputBuffer(outputBuffer) {}
 };

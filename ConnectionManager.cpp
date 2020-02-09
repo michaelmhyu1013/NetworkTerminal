@@ -29,13 +29,14 @@ ConnectionManager::ConnectionManager()
     , asInfo(new AcceptStruct())
 {
     asInfo->events = events;
+    memset(outputBuffer, '\0', MAX_FILE_SIZE * sizeof(char));
 }
 
 
 void ConnectionManager::uploadFile(ConnectionConfigurations *connConfig, std::wstring fileName)
 {
     // Create struct for buffer management and connection configurations
-    FileUploadStruct *fs = new FileUploadStruct(connConfig, &outputBuffer, fileName, this->events);
+    FileUploadStruct *fs = new FileUploadStruct(fileName, connConfig, this->events, this->outputBuffer);
 
     //  Create thread for file upload
     if ((fileThread = CreateThread(NULL, 0, threadService->onFileUpload,
@@ -51,7 +52,7 @@ void ConnectionManager::createUDPClient(ConnectionConfigurations *connConfig)
 {
     qDebug("udp");
     memset((char *)&server, 0, sizeof(server));
-    SendStruct *ss = new SendStruct(connConfig, this->events, &outputBuffer);
+    SendStruct *ss = new SendStruct(connConfig, this->events, this->outputBuffer);
 
     if ((n = configureClientAddressStructures(connConfig, ss)) < 0)
     {
@@ -64,7 +65,7 @@ void ConnectionManager::createTCPClient(ConnectionConfigurations *connConfig)
 {
     qDebug("tcpclient");
 
-    SendStruct *ss = new SendStruct(connConfig, this->events, &outputBuffer);
+    SendStruct *ss = new SendStruct(connConfig, this->events, this->outputBuffer);
     memset((char *)&server, 0, sizeof(struct sockaddr_in));
 
     if ((n = configureClientAddressStructures(connConfig, ss)) < 0)

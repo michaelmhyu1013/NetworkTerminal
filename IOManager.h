@@ -3,8 +3,8 @@
 #include "ConnectionConfigurations.h"
 #include "RoutineStructures.h"
 #include "WSAEvents.h"
-#include <windows.h>
 #include <winsock2.h>
+#include <windows.h>
 
 #define BUFFER_SIZE    65000
 

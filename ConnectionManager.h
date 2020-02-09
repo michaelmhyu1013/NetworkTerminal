@@ -8,6 +8,8 @@
 #include <queue>
 #include <winsock2.h>
 
+#define MAX_FILE_SIZE    20000000
+
 class WindowsThreadService;
 
 class ConnectionManager
@@ -23,18 +25,19 @@ public:
 
 protected:
 //    ConnectionConfigurations connConfig;
-    WindowsThreadService    *threadService;
-    WSADATA                 WSAData;
-    WORD                    wVersionRequested = MAKEWORD(2, 2);
-    HANDLE                  acceptThread, readThread, writeThread, connectThread, fileThread;
-    struct sockaddr_in      client, server;
-    struct hostent          *hp;
-    WSAEvents               *events;
-    DWORD                   acceptThreadID, readThreadID, writeThreadID, connectThreadID, fileThreadID;
-    AcceptStruct            *asInfo;
-    int                     n, ns, bytes_to_read, port, err;
-    char                    *host, *bp, **pptr;
-    std::queue<std::string> outputBuffer;
+    WORD                 wVersionRequested = MAKEWORD(2, 2);
+    WindowsThreadService *threadService;
+    WSADATA              WSAData;
+    HANDLE               acceptThread, readThread, writeThread, connectThread, fileThread;
+    struct sockaddr_in   client, server;
+    struct hostent       *hp;
+    WSAEvents            *events;
+    DWORD                acceptThreadID, readThreadID, writeThreadID, connectThreadID, fileThreadID;
+    AcceptStruct         *asInfo;
+    int                  n, ns, bytes_to_read, port, err;
+    char                 *host, *bp, **pptr;
+
+    char                 *outputBuffer = new char[MAX_FILE_SIZE];
 
 private:
     int bindServer(ConnectionConfigurations *connConfig);
