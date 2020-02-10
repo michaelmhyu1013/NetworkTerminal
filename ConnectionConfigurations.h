@@ -1,6 +1,8 @@
 #pragma once
 #include <string>
+#include <Windows.h>
 
+// TODO: change to singleton
 struct ConnectionConfigurations
 {
     int         connectionMode;
@@ -10,7 +12,7 @@ struct ConnectionConfigurations
     int         packetSize;
     int         transmissions;
     int         socketConnectionType;
-
+    DWORD       totalTransmissionsize;
     enum CONNECTION_TYPE
     {
         UDP = 0,

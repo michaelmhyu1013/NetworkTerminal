@@ -9,13 +9,11 @@ typedef std::chrono::duration<double, std::ratio<1> > second_;
 class TimeClock
 {
 private:
-    std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
-    std::chrono::time_point<std::chrono::high_resolution_clock> endTime;
+    std::chrono::time_point<std::chrono::system_clock> startTime;
+    std::chrono::time_point<std::chrono::system_clock> endTime;
 
 public:
-    TimeClock()
-        : startTime(std::chrono::system_clock::now())
-        , endTime(std::chrono::system_clock::now()) {}
+    TimeClock() {}
     inline void start() { startTime = std::chrono::system_clock::now(); }
     inline void end() { endTime = std::chrono::system_clock::now(); }
     inline double getRoundTripTime() { return(std::chrono::duration_cast<second_>(endTime - startTime).count()); }

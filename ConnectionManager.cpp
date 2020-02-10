@@ -82,13 +82,14 @@ void ConnectionManager::createTCPClient(ConnectionConfigurations *connConfig)
     {
         OutputDebugStringA("writeThread failed with error\n");
     }
-}
+} // ConnectionManager::createTCPClient
 
 
 void ConnectionManager::createUDPServer(ConnectionConfigurations *connConfig)
 {
     qDebug("udpserver");
     memset((char *)&server, 0, sizeof(server));
+    UDPServerStruct *udpStruct = new UDPServerStruct(&(asInfo->listenSocketDescriptor), connConfig, this->events, this->outputBuffer, &client);
 
     if ((n = bindServer(connConfig) < 0))
     {
@@ -97,6 +98,13 @@ void ConnectionManager::createUDPServer(ConnectionConfigurations *connConfig)
     else
     {
         OutputDebugStringA("Bind UDPServer success\n");
+    }
+
+    // need to pass client in
+    if ((readThread = CreateThread(NULL, 0, threadService->onUDPListenRoutine,
+                                   (LPVOID)udpStruct, 0, &readThreadID)) == NULL)
+    {
+        OutputDebugStringA("readThread failed with error\n");
     }
     // Create read thread
     // loop forever
@@ -160,6 +168,7 @@ void ConnectionManager::uploadFile(ConnectionConfigurations *connConfig, std::ws
 int ConnectionManager::bindServer(ConnectionConfigurations *connConfig)
 {
     WSAStartup(wVersionRequested, &WSAData);
+    asInfo->connConfig = connConfig;
 
     if ((asInfo->listenSocketDescriptor = WSASocket(PF_INET, connConfig->socketConnectionType, 0, NULL, 0, WSA_FLAG_OVERLAPPED)) == INVALID_SOCKET)
     {

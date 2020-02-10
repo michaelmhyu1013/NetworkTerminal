@@ -4,18 +4,21 @@
 #include "Definitions.h"
 #include "RoutineStructures.h"
 #include "WSAEvents.h"
-#include <windows.h>
-#include <winsock2.h>
+#include <Windows.h>
+#include <WinSock2.h>
 
 /*--------------- Globals --------------*/
 typedef struct _SOCKET_INFORMATION
 {
     WSAOVERLAPPED Overlapped;
     SOCKET        Socket;
-    CHAR          Buffer[MAX_FILE_SIZE];
+    CHAR          Buffer[9600];
     WSABUF        DataBuf;
     DWORD         BytesSEND;
     DWORD         BytesRECV;
+    int           TotalPackets;
+    int           *PacketSize;
+    DWORD         *TotalBytesReceived;
 } SOCKET_INFORMATION, *LPSOCKET_INFORMATION;
 
 class IOManager
@@ -26,9 +29,14 @@ public:
     DWORD handleFileRead(FileUploadStruct *input);
     DWORD handleConnect(AcceptStruct *input);
     DWORD handleAccept(AcceptStruct *input);
+    DWORD handleUDPRead(UDPServerStruct *input);
+
+    DWORD handleFileReadEX(FileUploadStruct *input);
 
     static DWORD WINAPI onWriteToFile(LPVOID param);
 
-    void static CALLBACK readRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags);
+    void static CALLBACK UDPReadRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags);
+    void static CALLBACK TCPReadRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags);
     void static CALLBACK sendRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags);
+    void static CALLBACK sendRoutineEX(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags);
 };

@@ -2,7 +2,8 @@
 #include <QString>
 #include <stdio.h>
 #include <string>
-#include <winsock2.h>
+#include <vector>
+#include <WinSock2.h>
 
 using namespace std;
 

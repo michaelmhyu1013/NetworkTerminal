@@ -25,31 +25,37 @@
 #include "IOManager.h"
 #include "RoutineStructures.h"
 #include "WSAEvents.h"
-#include <windows.h>
+#include <Windows.h>
 
 
 struct WindowsThreadService
 {
     static DWORD WINAPI onFileUpload(LPVOID param)
     {
-        return(((IOManager *)param)->handleFileRead(static_cast<FileUploadStruct *>(param)));
+        return((static_cast<IOManager *>(param))->handleFileRead(static_cast<FileUploadStruct *>(param)));
     }
 
 
     static DWORD WINAPI onSendRoutine(LPVOID param)
     {
-        return(((IOManager *)param)->handleSend(static_cast<SendStruct *>(param)));
+        return((static_cast<IOManager *>(param))->handleSend(static_cast<SendStruct *>(param)));
     }
 
 
     static DWORD WINAPI onConnectRoutine(LPVOID param)
     {
-        return(((IOManager *)param)->handleConnect(static_cast<AcceptStruct *>(param)));
+        return((static_cast<IOManager *>(param))->handleConnect(static_cast<AcceptStruct *>(param)));
     }
 
 
     static DWORD WINAPI onAcceptRoutine(LPVOID param)
     {
-        return(((IOManager *)param)->handleAccept(static_cast<AcceptStruct *>(param)));
+        return((static_cast<IOManager *>(param))->handleAccept(static_cast<AcceptStruct *>(param)));
+    }
+
+
+    static DWORD WINAPI onUDPListenRoutine(LPVOID param)
+    {
+        return((static_cast<IOManager *>(param))->handleUDPRead(static_cast<UDPServerStruct *>(param)));
     }
 };

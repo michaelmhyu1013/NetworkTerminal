@@ -7,7 +7,7 @@
 #include "WindowsThreadService.h"
 #include "WSAEvents.h"
 #include <queue>
-#include <winsock2.h>
+#include <WinSock2.h>
 
 class WindowsThreadService;
 
