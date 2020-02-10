@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Connection.h"
 #include "ConnectionConfigurations.h"
 #include "Definitions.h"
 #include "RoutineStructures.h"

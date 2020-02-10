@@ -8,9 +8,11 @@
 
 struct AcceptStruct
 {
-    SOCKET    acceptSocketDescriptor; // server's socket that handles newly created client connection
-    SOCKET    listenSocketDescriptor; // server's socket for listening to incoming client connect
-    WSAEvents *events;
+    SOCKET                   acceptSocketDescriptor; // server's socket that handles newly created client connection
+    SOCKET                   listenSocketDescriptor; // server's socket for listening to incoming client connect
+    WSAEvents                *events;
+    ConnectionConfigurations *connConfig;
+    char                     *outputBuffer;
 };
 
 struct SendStruct
