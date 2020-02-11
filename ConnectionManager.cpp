@@ -75,6 +75,14 @@ void ConnectionManager::createTCPClient(ConnectionConfigurations *connConfig)
         closesocket(ss->clientSocketDescriptor);
         WSACleanup();
     }
+    char sbuf[255] = "whatsup";
+    char **pptr;
+    qDebug("Connected:    Server Name: %s\n", hp->h_name);
+    pptr = hp->h_addr_list;
+    qDebug("\t\tIP Address: %s\n", inet_ntoa(server.sin_addr));
+    qDebug("Transmiting: %s", sbuf);
+
+    send(ss->clientSocketDescriptor, sbuf, 255, 0);
 
     //  Create thread for sending; will WFMO for COMPLETE_READ event signaled by fileThread
     if ((writeThread = CreateThread(NULL, 0, threadService->onSendRoutine,
@@ -160,6 +168,7 @@ void ConnectionManager::uploadFile(ConnectionConfigurations *connConfig, std::ws
 int ConnectionManager::bindServer(ConnectionConfigurations *connConfig)
 {
     WSAStartup(wVersionRequested, &WSAData);
+    asInfo->connConfig = connConfig;
 
     if ((asInfo->listenSocketDescriptor = WSASocket(PF_INET, connConfig->socketConnectionType, 0, NULL, 0, WSA_FLAG_OVERLAPPED)) == INVALID_SOCKET)
     {
@@ -224,4 +233,9 @@ int ConnectionManager::configureClientAddressStructures(ConnectionConfigurations
     }
     memcpy((char *)&server.sin_addr, hp->h_addr, hp->h_length);
     return(0);
+}
+
+ConnectionManager::~ConnectionManager()
+{
+    free(outputBuffer);
 }

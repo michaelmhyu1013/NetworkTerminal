@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <Windows.h>
 
 struct ConnectionConfigurations
 {
@@ -10,7 +11,7 @@ struct ConnectionConfigurations
     int         packetSize;
     int         transmissions;
     int         socketConnectionType;
-
+    DWORD       totalBytes;
     enum CONNECTION_TYPE
     {
         UDP = 0,

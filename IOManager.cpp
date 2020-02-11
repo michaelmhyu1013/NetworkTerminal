@@ -23,6 +23,7 @@
  * --
  * ----------------------------------------------------------------------------------------------------------------------*/
 #include "IOManager.h"
+#include <cmath>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -43,6 +44,7 @@ DWORD WINAPI IOManager::onWriteToFile(LPVOID param)
 
     std::fstream outputFile;
     std::string  strBuffer{ buffer };
+    qDebug("Size of write transfer is: %d characters", strBuffer.length());
     outputFile.open("output.txt", std::fstream::app);
     outputFile << strBuffer;
     outputFile.close();
@@ -51,10 +53,12 @@ DWORD WINAPI IOManager::onWriteToFile(LPVOID param)
 
 DWORD IOManager::handleSend(SendStruct *input)
 {
-    DWORD                Flags;
-    LPSOCKET_INFORMATION SocketInfo;
-    WSAEVENT             EventArray[1];
-    DWORD                Index;
+    DWORD      Flags{ 0 };
+    OVERLAPPED overlapped;
+    WSAEVENT   EventArray[1];
+    DWORD      Index;
+    WSABUF     sendBuf;
+    int        n;
 
     EventArray[0] = input->events->COMPLETE_READ;
 
@@ -70,39 +74,43 @@ DWORD IOManager::handleSend(SendStruct *input)
     {
         qDebug("Failed to reset event in handleSend");
     }
+    DWORD totalBytes         = input->connConfig->totalBytes;
+    int   totalTransmissions = input->connConfig->transmissions;
+    int   packetSize         = input->connConfig->packetSize;
+    int   packetsToSend      = std::ceil(totalBytes / static_cast<double>(packetSize));
+    int   offset             = 0;
 
-    if ((SocketInfo = (LPSOCKET_INFORMATION)GlobalAlloc(GPTR,
-                                                        sizeof(SOCKET_INFORMATION))) == NULL)
+    sendBuf.len = packetSize;  // len needs to change depending on user selected packet size...
+    char send[packetSize];
+    sendBuf.buf = send;
+    // send same buffer for now... TODO: parse through full file and needs to be in loop w/ offset
+    memcpy(sendBuf.buf, &(input->outputBuffer)[0], packetSize);
+
+    // tranmission times
+    for (int i = 0; i < totalTransmissions; i++)
     {
-        qDebug("GlobalAlloc() failed with error");
-    }
-    // TODO: IO PORTION IS DONE HERE --------------------------
-
-    // Fill in the details of our accepted socket.
-
-    SocketInfo->Socket = input->clientSocketDescriptor;
-
-    ZeroMemory(&(SocketInfo->Overlapped), sizeof(WSAOVERLAPPED));
-    SocketInfo->BytesSEND   = 0;
-    SocketInfo->BytesRECV   = 0;
-    SocketInfo->DataBuf.len = input->connConfig->packetSize;
-    SocketInfo->DataBuf.buf = input->outputBuffer;
-
-    Flags = 0;
-
-    // TODO: check if RecvBytes should be set to NULL
-    if (WSASend(SocketInfo->Socket, &(SocketInfo->DataBuf), 1, NULL, Flags,
-                &(SocketInfo->Overlapped), sendRoutine) == SOCKET_ERROR)
-    {
-        if (WSAGetLastError() != WSA_IO_PENDING)
+        //packetize
+        for (int j = 0; j < packetsToSend; j++)
         {
-            qDebug("WSASend() failed with error");
-            return(FALSE);
+            if (input->connConfig->connectionType == 1)                 // TCP
+            {
+                if ((n = sendTCPPacket(input->clientSocketDescriptor, &sendBuf, 1, Flags,
+                                       &overlapped, offset, packetSize)) < 0)
+                {
+                    qDebug("Sending TCP packet failed with error %d: ", n);
+                }
+            }
+            else if (input->connConfig->connectionType == 0) //UDP
+            {
+                if ((n = sendUDPPacket(input->clientSocketDescriptor, &sendBuf, 1, Flags,
+                                       &overlapped, offset, packetSize)) < 0)
+                {
+                    qDebug("Sending UDP packet failed with error %d: ", n);
+                }
+            }
         }
-    }
-    else
-    {
-        qDebug("Posting WSASend");
+
+        offset = 0;
     }
 } // IOManager::handleSend
 
@@ -114,10 +122,6 @@ DWORD IOManager::handleFileRead(FileUploadStruct *input)
     DWORD         dwBytesRead, totalBytesRead{ 0 };
     const wchar_t *filename;
     int           n;
-    int           bufferSize = input->connConfig->packetSize;
-
-    char          ReadBuffer[bufferSize];
-    memset(&ReadBuffer, 0, sizeof(ReadBuffer));
 
     filename = input->fileName.c_str();
 
@@ -152,15 +156,62 @@ DWORD IOManager::handleFileRead(FileUploadStruct *input)
             break;
         }
         totalBytesRead += dwBytesRead;
-        memset(&ReadBuffer, 0, sizeof(ReadBuffer));
     }
     CloseHandle(hFile);
+
+    input->connConfig->totalBytes = totalBytesRead;
 
     if (!WSASetEvent(input->events->COMPLETE_READ))
     {
         qDebug("Failure to set COMPLETE_READ event: %d", WSAGetLastError());
         return(-2);
     }
+    return(0);
+} // IOManager::handleFileRead
+
+
+DWORD IOManager::handleFileReadEX(FileUploadStruct *input)
+{
+    qDebug("handle File Read invoked");
+    OVERLAPPED    overlapped{ 0 };
+    HANDLE        hFile;
+    DWORD         dwBytesRead, totalBytesRead{ 0 };
+    const wchar_t *filename;
+    int           n, Index;
+    WSAEVENT      EventArray[1];
+
+    EventArray[0] = input->events->COMPLETE_READ;
+    filename      = input->fileName.c_str();
+
+    hFile = CreateFile(
+        filename,
+        GENERIC_READ,
+        0,
+        NULL,
+        OPEN_EXISTING,
+        FILE_FLAG_OVERLAPPED,
+        NULL
+        );
+
+    if (hFile == INVALID_HANDLE_VALUE)
+    {
+        qDebug("Invalid file handle");
+        return(-1);
+    }
+    PurgeComm(hFile, PURGE_RXCLEAR);
+
+    if ((n = ReadFileEx(hFile, input->outputBuffer, MAX_FILE_SIZE, &overlapped, sendRoutineEX)) == 0)
+    {
+        qDebug("Readfileex failed with error %lu", GetLastError());
+    }
+
+    if (GetLastError() != ERROR_SUCCESS)
+    {
+        qDebug("GetLastError Readfileex error: %lu", GetLastError());
+    }
+    CloseHandle(hFile);
+
+    Index = WSAWaitForMultipleEvents(1, EventArray, FALSE, WSA_INFINITE, TRUE);
     return(0);
 } // IOManager::handleFileRead
 
@@ -220,6 +271,7 @@ DWORD IOManager::handleConnect(AcceptStruct *input)
                 break;
             }
         }
+        // create thread for reading
 
         if (!WSAResetEvent(EventArray[0]))
         {
@@ -253,7 +305,7 @@ DWORD IOManager::handleConnect(AcceptStruct *input)
         {
             if (WSAGetLastError() != WSA_IO_PENDING)
             {
-                qDebug("WSARecv() failed with error");
+                qDebug("WSARecv() failed with error: %d", WSAGetLastError());
                 return(FALSE);
             }
         }
@@ -268,9 +320,12 @@ DWORD IOManager::handleConnect(AcceptStruct *input)
 /* -------------------------- COMPLETION ROUTINES ------------------------ */
 void IOManager::readRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags)
 {
-    DWORD WrittenBytes, RecvBytes;
+//    HANDLE               writeThread;
+//    DWORD                writeThreadID;
+    DWORD RecvBytes;
     DWORD Flags;
 
+    Flags = 0;
     // Reference the WSAOVERLAPPED structure as a SOCKET_INFORMATION structure
     LPSOCKET_INFORMATION SI = (LPSOCKET_INFORMATION)Overlapped;
 
@@ -290,62 +345,32 @@ void IOManager::readRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED
         GlobalFree(SI);
         return;
     }
-    // Check to see if the BytesRECV field equals zero. If this is so, then
-    // this means a WSARecv call just completed so update the BytesRECV field
-    // with the BytesTransferred value from the completed WSARecv() call.
+    SI->BytesRECV += BytesTransferred;
 
-    if (SI->BytesRECV == 0)
+    // Too slow when threaded... directly append to file
+    std::fstream outputFile;
+    qDebug("Bytes received: %lu", SI->BytesRECV);
+    std::string  strBuffer{ SI->DataBuf.buf };
+    outputFile.open("output.txt", std::fstream::app);
+    outputFile << strBuffer;
+    qDebug("Size of write transfer is: %d characters", strBuffer.length());
+    outputFile.close();
+//    if ((writeThread = CreateThread(NULL, 0, onWriteToFile,
+//                                    (LPVOID)SI->DataBuf.buf, 0, &writeThreadID)) == NULL)
+//    {
+//        qDebug("writeThread creation failed with error");
+//    }
+
+    SI->DataBuf.len = MAX_FILE_SIZE;
+    SI->DataBuf.buf = SI->Buffer;
+
+    if (WSARecv(SI->Socket, &(SI->DataBuf), 1, &RecvBytes, &Flags,
+                &(SI->Overlapped), readRoutine) == SOCKET_ERROR)
     {
-        SI->BytesRECV = BytesTransferred;
-        SI->BytesSEND = 0;
-    }
-    else
-    {
-        SI->BytesSEND += BytesTransferred;
-    }
-
-    if (SI->BytesRECV > SI->BytesSEND)
-    {
-        // Post another WSASend() request.
-        // Since WSASend() is not gauranteed to send all of the bytes requested,
-        // continue posting WSASend() calls until all received bytes are sent.
-
-        ZeroMemory(&(SI->Overlapped), sizeof(WSAOVERLAPPED));
-        SI->DataBuf.buf = SI->Buffer + SI->BytesSEND;
-        SI->DataBuf.len = SI->BytesRECV - SI->BytesSEND;
-
-        // TODO : WRITE TO FILE RATHER THAN SEND BACK TO CLIENT...
-        //  Create thread for file upload
-
-        HANDLE writeThread;
-        DWORD  writeThreadID;
-
-        if ((writeThread = CreateThread(NULL, 0, onWriteToFile,
-                                        (LPVOID)SI->DataBuf.buf, 0, &writeThreadID)) == NULL)
+        if (WSAGetLastError() != WSA_IO_PENDING)
         {
-            qDebug("writeThread creation failed with error");
-        }
-    }
-    else
-    {
-        SI->BytesRECV = 0;
-
-        // Now that there are no more bytes to send post another WSARecv() request.
-
-        Flags = 0;
-        ZeroMemory(&(SI->Overlapped), sizeof(WSAOVERLAPPED));
-
-        SI->DataBuf.len = MAX_FILE_SIZE;
-        SI->DataBuf.buf = SI->Buffer;
-
-        if (WSARecv(SI->Socket, &(SI->DataBuf), 1, &RecvBytes, &Flags,
-                    &(SI->Overlapped), readRoutine) == SOCKET_ERROR)
-        {
-            if (WSAGetLastError() != WSA_IO_PENDING)
-            {
-                qDebug("WSARecv() failed with error %d", WSAGetLastError());
-                return;
-            }
+            qDebug("WSARecv() failed with error %d", WSAGetLastError());
+            return;
         }
     }
 } // IOManager::readRoutine
@@ -353,5 +378,49 @@ void IOManager::readRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED
 
 void IOManager::sendRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags)
 {
-    // TODO: FINISH SENDROUTINE
 } // IOManager::sendRoutine
+
+
+void IOManager::sendRoutineEX(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped)
+{
+    qDebug("sendRoutineEx");
+    // just loop over buffer and send over stream.
+}
+
+
+/* -------------------------- HELPER FUNCS ------------------------ */
+int IOManager::sendTCPPacket(SOCKET s, LPWSABUF lpBuffers, DWORD dwBufferCount, DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped, int &offset, int packetSize)
+{
+    if (WSASend(s, lpBuffers, dwBufferCount, NULL, dwFlags,
+                lpOverlapped, NULL) == 0)
+    {
+        qDebug("Sent bytes");
+        offset += packetSize;
+        return(0);
+    }
+    else
+    {
+        qDebug("Failed to send TCP Packet");
+        return(-1);
+    }
+}
+
+
+int IOManager::sendUDPPacket(SOCKET s, LPWSABUF lpBuffers, DWORD dwBufferCount, DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped, int &offset, int packetSize)
+{
+    if (WSASendTo(s, lpBuffers, dwBufferCount, NULL, dwFlags, NULL, NULL,
+                  lpOverlapped, NULL) == SOCKET_ERROR)
+    {
+        if (WSAGetLastError() != WSA_IO_PENDING)
+        {
+            qDebug("WSASend() failed with error");
+            return(-1);
+        }
+        else if (WSAGetLastError() == WSA_IO_PENDING)
+        {
+            qDebug("Sent bytes");
+            offset += packetSize;
+            return(0);
+        }
+    }
+}

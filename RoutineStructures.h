@@ -35,7 +35,6 @@ struct FileUploadStruct
     ConnectionConfigurations *connConfig;
     char                     *outputBuffer;
     WSAEvents                *events;
-
     FileUploadStruct(std::wstring fileName, ConnectionConfigurations *connConfig
                      , WSAEvents *events, char *outputBuffer)
         : fileName(fileName)

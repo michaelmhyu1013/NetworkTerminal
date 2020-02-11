@@ -159,8 +159,13 @@
      <item>
       <widget class="QComboBox" name="tranmissionValue">
        <property name="currentIndex">
-        <number>1</number>
+        <number>0</number>
        </property>
+       <item>
+        <property name="text">
+         <string>1</string>
+        </property>
+       </item>
        <item>
         <property name="text">
          <string>5</string>
