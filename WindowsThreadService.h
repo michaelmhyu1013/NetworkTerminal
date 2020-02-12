@@ -48,6 +48,12 @@ struct WindowsThreadService
     }
 
 
+    static DWORD WINAPI onUDPReadRoutine(LPVOID param)
+    {
+        return(((IOManager *)param)->handleUDPRead(static_cast<AcceptStruct *>(param)));
+    }
+
+
     static DWORD WINAPI onAcceptRoutine(LPVOID param)
     {
         return(((IOManager *)param)->handleAccept(static_cast<AcceptStruct *>(param)));

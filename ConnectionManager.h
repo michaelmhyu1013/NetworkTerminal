@@ -42,6 +42,6 @@ private:
     int bindServer(ConnectionConfigurations *connConfig);
     int bindUDPClient(sockaddr_in &client, SendStruct *ss);
     int configureClientAddressStructures(ConnectionConfigurations *connConfig, SendStruct *ss);
-
+    void cleanUp();
     ~ConnectionManager();
 };

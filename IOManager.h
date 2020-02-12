@@ -30,15 +30,19 @@ public:
     DWORD handleFileReadEX(FileUploadStruct *input);
     DWORD handleConnect(AcceptStruct *input);
     DWORD handleAccept(AcceptStruct *input);
-    static DWORD WINAPI onWriteToFile(LPVOID param);
+    DWORD handleUDPRead(AcceptStruct *input);
 
+    static DWORD WINAPI onWriteToFile(LPVOID param);
 
     void static CALLBACK readRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags);
     void static CALLBACK sendRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags);
     void static CALLBACK sendRoutineEX(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped);
+    void static CALLBACK UDPReadRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags);
 
-    int sendTCPPacket(SOCKET s, LPWSABUF lpBuffers, DWORD dwBufferCount, DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped, int &offset, int packetSize);
-    int sendUDPPacket(SOCKET s, LPWSABUF lpBuffers, DWORD dwBufferCount, DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped, int &offset, int packetSize);~IOManager();
+    int sendTCPPacket(SOCKET s, WSABUF *lpBuffers, DWORD dwBufferCount, DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped, int &offset, int packetSize);
+    int sendUDPPacket(SOCKET s, WSABUF *lpBuffers, DWORD dwBufferCount, DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped, struct sockaddr_in *server, int &offset, int packetSize);
+
+    ~IOManager();
 
 private:
 };

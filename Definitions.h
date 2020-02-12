@@ -1,3 +1,3 @@
 #pragma once
 
-#define MAX_FILE_SIZE    20000000
+#define MAX_FILE_SIZE    10000

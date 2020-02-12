@@ -48,17 +48,18 @@ DWORD WINAPI IOManager::onWriteToFile(LPVOID param)
     outputFile.open("output.txt", std::fstream::app);
     outputFile << strBuffer;
     outputFile.close();
+    return(0);
 }
 
 
 DWORD IOManager::handleSend(SendStruct *input)
 {
-    DWORD      Flags{ 0 };
-    OVERLAPPED overlapped;
-    WSAEVENT   EventArray[1];
-    DWORD      Index;
-    WSABUF     sendBuf;
-    int        n;
+    DWORD                Flags{ 0 };
+    DWORD                Index;
+    LPSOCKET_INFORMATION SocketInfo;
+    OVERLAPPED           overlapped;
+    WSAEVENT             EventArray[1];
+    int                  n;
 
     EventArray[0] = input->events->COMPLETE_READ;
 
@@ -74,42 +75,60 @@ DWORD IOManager::handleSend(SendStruct *input)
     {
         qDebug("Failed to reset event in handleSend");
     }
-    DWORD totalBytes         = input->connConfig->totalBytes;
-    int   totalTransmissions = input->connConfig->transmissions;
-    int   packetSize         = input->connConfig->packetSize;
-    int   packetsToSend      = std::ceil(totalBytes / static_cast<double>(packetSize));
-    int   offset             = 0;
 
-    sendBuf.len = packetSize;  // len needs to change depending on user selected packet size...
-    char send[packetSize];
-    sendBuf.buf = send;
+    if ((SocketInfo = (LPSOCKET_INFORMATION)GlobalAlloc(GPTR,
+                                                        sizeof(SOCKET_INFORMATION))) == NULL)
+    {
+        qDebug("GlobalAlloc() failed with error");
+        qDebug("GlobalAlloc() failed with error");
+        closesocket(input->clientSocketDescriptor);
+        WSACleanup();
+        return(-1);
+    }
+    SocketInfo->Socket = input->clientSocketDescriptor;
+
+    int  packetSize = input->connConfig->packetSize;
+    char bufferSend[packetSize];
+
+    ZeroMemory(&(SocketInfo->Overlapped), sizeof(WSAOVERLAPPED));
+    SocketInfo->BytesSEND   = 0;
+    SocketInfo->BytesRECV   = 0;
+    SocketInfo->DataBuf.len = packetSize;
+    SocketInfo->DataBuf.buf = bufferSend;
+
+    SocketInfo->totalTransmissions = input->connConfig->transmissions;
+    SocketInfo->packetSize         = packetSize;
+    SocketInfo->packetsToSend      = std::ceil(input->connConfig->totalBytes / static_cast<double>(SocketInfo->packetSize));
+
+    int offset = 0;
+
+    int bufferSizeToSend = input->connConfig->totalBytes > packetSize ? packetSize : input->connConfig->totalBytes;
     // send same buffer for now... TODO: parse through full file and needs to be in loop w/ offset
-    memcpy(sendBuf.buf, &(input->outputBuffer)[0], packetSize);
+    memcpy(SocketInfo->DataBuf.buf, &(input->outputBuffer)[0], bufferSizeToSend);
 
     // tranmission times
-    for (int i = 0; i < totalTransmissions; i++)
+    for (DWORD i = 0; i < SocketInfo->totalTransmissions; i++)
     {
         //packetize
-        for (int j = 0; j < packetsToSend; j++)
+        for (DWORD j = 0; j < SocketInfo->packetsToSend; j++)
         {
             if (input->connConfig->connectionType == 1)                 // TCP
             {
-                if ((n = sendTCPPacket(input->clientSocketDescriptor, &sendBuf, 1, Flags,
-                                       &overlapped, offset, packetSize)) < 0)
+                if ((n = sendTCPPacket(SocketInfo->Socket, &(SocketInfo->DataBuf), 1, Flags,
+                                       &(SocketInfo->Overlapped), offset, packetSize)) < 0)
                 {
                     qDebug("Sending TCP packet failed with error %d: ", n);
                 }
             }
             else if (input->connConfig->connectionType == 0) //UDP
             {
-                if ((n = sendUDPPacket(input->clientSocketDescriptor, &sendBuf, 1, Flags,
-                                       &overlapped, offset, packetSize)) < 0)
+                if ((n = sendUDPPacket(SocketInfo->Socket, &(SocketInfo->DataBuf), 1, Flags,
+                                       &(SocketInfo->Overlapped), input->server, offset, packetSize)) < 0)
                 {
                     qDebug("Sending UDP packet failed with error %d: ", n);
                 }
             }
         }
-
         offset = 0;
     }
 } // IOManager::handleSend
@@ -175,13 +194,14 @@ DWORD IOManager::handleFileReadEX(FileUploadStruct *input)
     qDebug("handle File Read invoked");
     OVERLAPPED    overlapped{ 0 };
     HANDLE        hFile;
-    DWORD         dwBytesRead, totalBytesRead{ 0 };
     const wchar_t *filename;
     int           n, Index;
     WSAEVENT      EventArray[1];
 
     EventArray[0] = input->events->COMPLETE_READ;
     filename      = input->fileName.c_str();
+
+    // This should techncially work if I global alloc the socket here with a buffer large enough to store the file...
 
     hFile = CreateFile(
         filename,
@@ -250,8 +270,6 @@ DWORD IOManager::handleConnect(AcceptStruct *input)
 
     while (TRUE)
     {
-        // Wait for accept() to signal an event and also process WorkerRoutine() returns.
-
         while (TRUE)
         {
             qDebug("Waiting for connection");
@@ -266,12 +284,10 @@ DWORD IOManager::handleConnect(AcceptStruct *input)
 
             if ((Index - WSA_WAIT_EVENT_0) == 0)
             {
-                // An accept() call event is ready - break the wait loop
                 qDebug("Connection received");
                 break;
             }
         }
-        // create thread for reading
 
         if (!WSAResetEvent(EventArray[0]))
         {
@@ -282,11 +298,12 @@ DWORD IOManager::handleConnect(AcceptStruct *input)
                                                             sizeof(SOCKET_INFORMATION))) == NULL)
         {
             qDebug("GlobalAlloc() failed with error");
+            qDebug("GlobalAlloc() failed with error");
+            closesocket(input->acceptSocketDescriptor);
+            closesocket(input->listenSocketDescriptor);
+            WSACleanup();
+            return(-1);
         }
-        // TODO: IO PORTION IS DONE HERE --------------------------
-
-        // Fill in the details of our accepted socket.
-
         SocketInfo->Socket = input->acceptSocketDescriptor;
 
         ZeroMemory(&(SocketInfo->Overlapped), sizeof(WSAOVERLAPPED));
@@ -315,6 +332,66 @@ DWORD IOManager::handleConnect(AcceptStruct *input)
         }
     }
 } // IOManager::handleConnect
+
+
+DWORD IOManager::handleUDPRead(AcceptStruct *input)
+{
+    qDebug("handleUDPRead execute");
+    DWORD                Flags;
+    LPSOCKET_INFORMATION SocketInfo;
+    WSAEVENT             EventArray[1];
+    DWORD                Index;
+    DWORD                RecvBytes;
+    int                  packetSize = input->connConfig->packetSize;
+    EventArray[0] = WSACreateEvent();
+
+    if ((SocketInfo = (LPSOCKET_INFORMATION)GlobalAlloc(GPTR,
+                                                        sizeof(SOCKET_INFORMATION))) == NULL)
+    {
+        qDebug("GlobalAlloc() failed with error");
+        closesocket(input->acceptSocketDescriptor);
+        closesocket(input->listenSocketDescriptor);
+        WSACleanup();
+        return(-1);
+    }
+    SocketInfo->Socket = input->listenSocketDescriptor;
+
+    ZeroMemory(&(SocketInfo->Overlapped), sizeof(WSAOVERLAPPED));
+    SocketInfo->BytesSEND   = 0;
+    SocketInfo->BytesRECV   = 0;
+    SocketInfo->DataBuf.len = packetSize;
+    SocketInfo->DataBuf.buf = SocketInfo->Buffer;
+
+    Flags = 0;
+
+    while (TRUE)
+    {
+        if (WSARecvFrom(SocketInfo->Socket, &(SocketInfo->DataBuf), 1, NULL, &Flags, NULL, NULL,
+                        &(SocketInfo->Overlapped), UDPReadRoutine) == SOCKET_ERROR)
+        {
+            if (WSAGetLastError() != WSA_IO_PENDING)
+            {
+                qDebug("WSARecvFrom failed with error: %d", WSAGetLastError());
+                return(FALSE);
+            }
+        }
+        else
+        {
+            qDebug("Posting WSARecvFrom");
+        }
+        Index = WSAWaitForMultipleEvents(1, EventArray, FALSE, WSA_INFINITE, TRUE);
+
+        if (Index == WSA_WAIT_FAILED)
+        {
+            qDebug("UDP WSAWaitForMultipleEvents failed with error: %d", WSAGetLastError());
+        }
+
+        if (Index == WSA_WAIT_IO_COMPLETION)
+        {
+            qDebug("UDP packet received");
+        }
+    }
+} // IOManager::handleUDPRead
 
 
 /* -------------------------- COMPLETION ROUTINES ------------------------ */
@@ -350,7 +427,7 @@ void IOManager::readRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED
     // Too slow when threaded... directly append to file
     std::fstream outputFile;
     qDebug("Bytes received: %lu", SI->BytesRECV);
-    std::string  strBuffer{ SI->DataBuf.buf };
+    std::string  strBuffer(SI->DataBuf.buf, BytesTransferred);
     outputFile.open("output.txt", std::fstream::app);
     outputFile << strBuffer;
     qDebug("Size of write transfer is: %d characters", strBuffer.length());
@@ -376,6 +453,57 @@ void IOManager::readRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED
 } // IOManager::readRoutine
 
 
+void IOManager::UDPReadRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags)
+{
+    qDebug("UDPReadRoutine");
+    DWORD RecvBytes;
+    DWORD Flags;
+
+    Flags = 0;
+    // Reference the WSAOVERLAPPED structure as a SOCKET_INFORMATION structure
+    LPSOCKET_INFORMATION SI = (LPSOCKET_INFORMATION)Overlapped;
+
+    if (Error != 0)
+    {
+        qDebug("I/O operation failed with error %lu", Error);
+    }
+
+    if (BytesTransferred == 0)
+    {
+        qDebug("Closing socket: %d", SI->Socket);
+    }
+
+    if (Error != 0 || BytesTransferred == 0)
+    {
+        closesocket(SI->Socket);
+        GlobalFree(SI);
+        return;
+    }
+    SI->BytesRECV += BytesTransferred;
+
+    std::fstream outputFile;
+    qDebug("Bytes received: %lu", SI->BytesRECV);
+    std::string  strBuffer(SI->DataBuf.buf, BytesTransferred);
+    outputFile.open("output.txt", std::fstream::app);
+    outputFile << strBuffer;
+    qDebug("Size of write transfer is: %d characters", strBuffer.length());
+    outputFile.close();
+
+    SI->DataBuf.len = MAX_FILE_SIZE;
+    SI->DataBuf.buf = SI->Buffer;
+
+    if (WSARecvFrom(SI->Socket, &(SI->DataBuf), 1, &RecvBytes, &Flags, NULL, NULL,
+                    &(SI->Overlapped), UDPReadRoutine) == SOCKET_ERROR)
+    {
+        if (WSAGetLastError() != WSA_IO_PENDING)
+        {
+            qDebug("WSARecv() failed with error %d", WSAGetLastError());
+            return;
+        }
+    }
+} // IOManager::UDPReadRoutine
+
+
 void IOManager::sendRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags)
 {
 } // IOManager::sendRoutine
@@ -389,7 +517,7 @@ void IOManager::sendRoutineEX(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPP
 
 
 /* -------------------------- HELPER FUNCS ------------------------ */
-int IOManager::sendTCPPacket(SOCKET s, LPWSABUF lpBuffers, DWORD dwBufferCount, DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped, int &offset, int packetSize)
+int IOManager::sendTCPPacket(SOCKET s, WSABUF *lpBuffers, DWORD dwBufferCount, DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped, int &offset, int packetSize)
 {
     if (WSASend(s, lpBuffers, dwBufferCount, NULL, dwFlags,
                 lpOverlapped, NULL) == 0)
@@ -406,17 +534,19 @@ int IOManager::sendTCPPacket(SOCKET s, LPWSABUF lpBuffers, DWORD dwBufferCount, 
 }
 
 
-int IOManager::sendUDPPacket(SOCKET s, LPWSABUF lpBuffers, DWORD dwBufferCount, DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped, int &offset, int packetSize)
+int IOManager::sendUDPPacket(SOCKET s, WSABUF *lpBuffers, DWORD dwBufferCount, DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped, sockaddr_in *server, int &offset, int packetSize)
 {
-    if (WSASendTo(s, lpBuffers, dwBufferCount, NULL, dwFlags, NULL, NULL,
+    size_t size = sizeof(*server);
+
+    if (WSASendTo(s, lpBuffers, dwBufferCount, NULL, dwFlags, (struct sockaddr *)server, size,
                   lpOverlapped, NULL) == SOCKET_ERROR)
     {
         if (WSAGetLastError() != WSA_IO_PENDING)
         {
-            qDebug("WSASend() failed with error");
+            qDebug("WSASendTo failed with error: %d", WSAGetLastError());
             return(-1);
         }
-        else if (WSAGetLastError() == WSA_IO_PENDING)
+        else
         {
             qDebug("Sent bytes");
             offset += packetSize;

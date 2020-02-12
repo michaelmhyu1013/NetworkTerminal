@@ -97,7 +97,7 @@
   </action>
   <action name="actionUpload_File">
    <property name="enabled">
-    <bool>false</bool>
+    <bool>true</bool>
    </property>
    <property name="text">
     <string>Upload File...</string>

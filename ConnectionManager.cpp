@@ -39,7 +39,7 @@ void ConnectionManager::createUDPClient(ConnectionConfigurations *connConfig)
     memset((char *)&server, 0, sizeof(server));
     memset((char *)&client, 0, sizeof(client));
 
-    SendStruct *ss = new SendStruct(connConfig, this->events, this->outputBuffer);
+    SendStruct *ss = new SendStruct(connConfig, this->events, this->outputBuffer, &server);
 
     if ((n = configureClientAddressStructures(connConfig, ss)) < 0)
     {
@@ -50,6 +50,12 @@ void ConnectionManager::createUDPClient(ConnectionConfigurations *connConfig)
     {
         qDebug("Bind to UDP server failed: %d", n);
     }
+
+    if ((writeThread = CreateThread(NULL, 0, threadService->onSendRoutine,
+                                    (LPVOID)ss, 0, &writeThreadID)) == NULL)
+    {
+        OutputDebugStringA("writeThread failed with error\n");
+    }
 }
 
 
@@ -57,7 +63,7 @@ void ConnectionManager::createTCPClient(ConnectionConfigurations *connConfig)
 {
     qDebug("tcpclient");
 
-    SendStruct *ss = new SendStruct(connConfig, this->events, this->outputBuffer);
+    SendStruct *ss = new SendStruct(connConfig, this->events, this->outputBuffer, &server);
     memset((char *)&server, 0, sizeof(struct sockaddr_in));
 
     if ((n = configureClientAddressStructures(connConfig, ss)) < 0)
@@ -75,14 +81,6 @@ void ConnectionManager::createTCPClient(ConnectionConfigurations *connConfig)
         closesocket(ss->clientSocketDescriptor);
         WSACleanup();
     }
-    char sbuf[255] = "whatsup";
-    char **pptr;
-    qDebug("Connected:    Server Name: %s\n", hp->h_name);
-    pptr = hp->h_addr_list;
-    qDebug("\t\tIP Address: %s\n", inet_ntoa(server.sin_addr));
-    qDebug("Transmiting: %s", sbuf);
-
-    send(ss->clientSocketDescriptor, sbuf, 255, 0);
 
     //  Create thread for sending; will WFMO for COMPLETE_READ event signaled by fileThread
     if ((writeThread = CreateThread(NULL, 0, threadService->onSendRoutine,
@@ -100,19 +98,18 @@ void ConnectionManager::createUDPServer(ConnectionConfigurations *connConfig)
 
     if ((n = bindServer(connConfig) < 0))
     {
-        OutputDebugStringA("Bind UDPServer failed\n");
+        qDebug("Bind UDPServer failed");
     }
     else
     {
-        OutputDebugStringA("Bind UDPServer success\n");
+        qDebug("Bind UDPServer success");
     }
-    // Create read thread
-    // loop forever
-    // completion routine to read from socket
-    // after read is done, set event for finished reading
-    // wait for 'finished reading' event
-    // create thread
-    // write to file
+
+    if ((readThread = CreateThread(NULL, 0, threadService->onUDPReadRoutine,
+                                   (LPVOID)asInfo, 0, &readThreadID)) == NULL)
+    {
+        qDebug("readThread failed with error");
+    }
 }
 
 
@@ -195,13 +192,13 @@ int ConnectionManager::bindUDPClient(sockaddr_in &client, SendStruct *ss)
     client.sin_family      = AF_INET;
     client.sin_port        = htons(0); // bind to any available port
     client.sin_addr.s_addr = htonl(INADDR_ANY);
-    client_len             = sizeof(client);
 
     if (bind(ss->clientSocketDescriptor, (struct sockaddr *)&client, sizeof(client)) == -1)
     {
         perror("Can't bind name to socket");
         return(-1);
     }
+    client_len = sizeof(client);
 
     if (getsockname(ss->clientSocketDescriptor, (struct sockaddr *)&client, &client_len) < 0)
     {
@@ -233,6 +230,14 @@ int ConnectionManager::configureClientAddressStructures(ConnectionConfigurations
     }
     memcpy((char *)&server.sin_addr, hp->h_addr, hp->h_length);
     return(0);
+}
+
+
+/*
+ * Clean up all resources
+ */
+void ConnectionManager::cleanUp()
+{
 }
 
 ConnectionManager::~ConnectionManager()

@@ -21,12 +21,13 @@ struct SendStruct
     ConnectionConfigurations *connConfig;
     WSAEvents                *events;
     char                     *outputBuffer;
-
+    struct sockaddr_in       *server;
     SendStruct(ConnectionConfigurations *connConfig, WSAEvents *events,
-               char *outputBuffer)
+               char *outputBuffer, struct sockaddr_in *server)
         : connConfig(connConfig)
         , events(events)
-        , outputBuffer(outputBuffer) {}
+        , outputBuffer(outputBuffer)
+        , server(server) {}
 };
 
 struct FileUploadStruct
