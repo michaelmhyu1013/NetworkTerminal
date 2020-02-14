@@ -75,11 +75,10 @@ void ConnectionManager::createTCPClient(ConnectionConfigurations *connConfig)
         OutputDebugStringA("Bind TCPClient success\n");
     }
 
-    if (connect(ss->clientSocketDescriptor, (struct sockaddr *)&server, sizeof(server)) == SOCKET_ERROR)
+    if ((connectThread = CreateThread(NULL, 0, threadService->onTCPConnect,
+                                    (LPVOID)ss, 0, &connectThreadID)) == NULL)
     {
-        OutputDebugStringA("Failed to connect to desired host\n");
-        closesocket(ss->clientSocketDescriptor);
-        WSACleanup();
+        OutputDebugStringA("connectThread failed with error\n");
     }
 
     //  Create thread for sending; will WFMO for COMPLETE_READ event signaled by fileThread

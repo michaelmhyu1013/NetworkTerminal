@@ -21,8 +21,6 @@ public:
     void createTCPServer(ConnectionConfigurations *connConfig);
     void uploadFile(ConnectionConfigurations *connConfig, std::wstring fileName);
 
-    inline TimeClock getClock() { return(this->clock); }
-
 protected:
     WindowsThreadService *threadService;
     WSADATA              WSAData;
@@ -33,8 +31,6 @@ protected:
     DWORD                acceptThreadID, readThreadID, writeThreadID, connectThreadID, fileThreadID;
     AcceptStruct         *asInfo;
     int                  n;
-
-    TimeClock            clock;
     WORD                 wVersionRequested = MAKEWORD(2, 2);
     char                 *outputBuffer     = new char[MAX_FILE_SIZE];
 

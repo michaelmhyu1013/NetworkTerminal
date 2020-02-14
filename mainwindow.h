@@ -28,6 +28,8 @@ private:
     ConnectionManager        *connManager;
 public:
     MainWindow(QWidget *parent = nullptr);
+    Ui::MainWindow *getUI() { return(this->ui); }
+
     ~MainWindow();
 
 private slots:

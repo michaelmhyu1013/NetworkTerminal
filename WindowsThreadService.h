@@ -36,6 +36,12 @@ struct WindowsThreadService
     }
 
 
+    static DWORD WINAPI onTCPConnect(LPVOID param)
+    {
+        return(((IOManager *)param)->handleTCPConnect(static_cast<SendStruct *>(param)));
+    }
+
+
     static DWORD WINAPI onSendRoutine(LPVOID param)
     {
         return(((IOManager *)param)->handleSend(static_cast<SendStruct *>(param)));

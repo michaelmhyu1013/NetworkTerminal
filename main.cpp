@@ -24,6 +24,7 @@
  * -- to perform network resolution actions.
  * ----------------------------------------------------------------------------------------------------------------------*/
 
+#include "GlobalUIManager.h"
 #include "mainwindow.h"
 #include <QApplication>
 
@@ -32,6 +33,10 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
     MainWindow   w;
+    TimeClock    &clock = TimeClock::getInstance();
+    GlobalUIManager &uiManager = GlobalUIManager::getInstance();
+
+    uiManager.setUIObject(w.getUI());
 
     w.show();
     return(a.exec());

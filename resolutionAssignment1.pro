@@ -17,6 +17,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
     ConnectionManager.cpp \
+    GlobalUIManager.cpp \
     IOManager.cpp \
     TimeClock.cpp \
     WindowsSocketManager.cpp \
@@ -31,6 +32,7 @@ HEADERS += \
     ConnectionConfigurations.h \
     ConnectionManager.h \
     Definitions.h \
+    GlobalUIManager.h \
     IOManager.h \
     RoutineStructures.h \
     TimeClock.h \

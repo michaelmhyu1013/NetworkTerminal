@@ -2,8 +2,10 @@
 
 #include "ConnectionConfigurations.h"
 #include "Definitions.h"
+#include "GlobalUIManager.h"
 #include "RoutineStructures.h"
 #include "WSAEvents.h"
+#include <TimeClock.h>
 #include <windows.h>
 #include <winsock2.h>
 
@@ -21,6 +23,7 @@ typedef struct _SOCKET_INFORMATION
     DWORD         packetsToSend;
 } SOCKET_INFORMATION, *LPSOCKET_INFORMATION;
 
+
 class IOManager
 {
 public:
@@ -31,6 +34,7 @@ public:
     DWORD handleConnect(AcceptStruct *input);
     DWORD handleAccept(AcceptStruct *input);
     DWORD handleUDPRead(AcceptStruct *input);
+    DWORD handleTCPConnect(SendStruct *input);
 
     static DWORD WINAPI onWriteToFile(LPVOID param);
 
@@ -39,10 +43,14 @@ public:
     void static CALLBACK sendRoutineEX(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped);
     void static CALLBACK UDPReadRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags);
 
-    int sendTCPPacket(SOCKET s, WSABUF *lpBuffers, DWORD dwBufferCount, DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped, int &offset, int packetSize);
-    int sendUDPPacket(SOCKET s, WSABUF *lpBuffers, DWORD dwBufferCount, DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped, struct sockaddr_in *server, int &offset, int packetSize);
+
+    TimeClock       &clock = TimeClock::getInstance();
+    GlobalUIManager &ui    = GlobalUIManager::getInstance();
 
     ~IOManager();
 
 private:
+    int sendTCPPacket(SOCKET s, WSABUF *lpBuffers, DWORD dwBufferCount, DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped, int &offset, int packetSize);
+    int sendUDPPacket(SOCKET s, WSABUF *lpBuffers, DWORD dwBufferCount, DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped, struct sockaddr_in *server, int &offset, int packetSize);
+    void static writeToFile(LPWSAOVERLAPPED Overlapped, DWORD BytesTransferred);
 };
