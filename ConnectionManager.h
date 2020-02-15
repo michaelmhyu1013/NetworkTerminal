@@ -1,8 +1,10 @@
 #pragma once
 
+#include "Client.h"
 #include "ConnectionConfigurations.h"
 #include "Definitions.h"
 #include "RoutineStructures.h"
+#include "Server.h"
 #include "TimeClock.h"
 #include "WindowsThreadService.h"
 #include "WSAEvents.h"
@@ -39,5 +41,9 @@ private:
     int bindUDPClient(sockaddr_in &client, SendStruct *ss);
     int configureClientAddressStructures(ConnectionConfigurations *connConfig, SendStruct *ss);
     void cleanUp();
+
     ~ConnectionManager();
+
+    Client clnt;
+    Server serv;
 };

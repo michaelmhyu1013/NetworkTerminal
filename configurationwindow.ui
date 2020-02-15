@@ -90,7 +90,7 @@
      <item>
       <widget class="QComboBox" name="packetValue">
        <property name="currentIndex">
-        <number>0</number>
+        <number>3</number>
        </property>
        <item>
         <property name="text">
@@ -114,12 +114,12 @@
        </item>
        <item>
         <property name="text">
-         <string>32768</string>
+         <string>38400</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>65536</string>
+         <string>65000</string>
         </property>
        </item>
       </widget>
@@ -154,7 +154,7 @@
      <item>
       <widget class="QComboBox" name="tranmissionValue">
        <property name="currentIndex">
-        <number>0</number>
+        <number>4</number>
        </property>
        <item>
         <property name="text">

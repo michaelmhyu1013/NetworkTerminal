@@ -260,13 +260,17 @@ DWORD IOManager::handleUDPRead(AcceptStruct *input)
         WSACleanup();
         return(-1);
     }
+    int recvBufSize = 6000000;
+    int err         = setsockopt(input->listenSocketDescriptor, SOL_SOCKET, SO_RCVBUF,
+                                 (const char *)&recvBufSize, sizeof(recvBufSize));
+
     SocketInfo->Socket = input->listenSocketDescriptor;
 
     ZeroMemory(&(SocketInfo->Overlapped), sizeof(WSAOVERLAPPED));
     SocketInfo->BytesSEND   = 0;
     SocketInfo->BytesRECV   = 0;
     SocketInfo->DataBuf.len = MAX_FILE_SIZE;
-    SocketInfo->DataBuf.buf = SocketInfo->Buffer;
+    SocketInfo->DataBuf.buf = SocketInfo->Buffer; // assign the wsabuf to the socket buffer
 
     Flags = 0;
 
@@ -281,20 +285,11 @@ DWORD IOManager::handleUDPRead(AcceptStruct *input)
                 return(FALSE);
             }
         }
-        else
-        {
-            qDebug("Posting WSARecvFrom");
-        }
         Index = WSAWaitForMultipleEvents(1, EventArray, FALSE, WSA_INFINITE, TRUE);
 
         if (Index == WSA_WAIT_FAILED)
         {
             qDebug("UDP WSAWaitForMultipleEvents failed with error: %d", WSAGetLastError());
-        }
-
-        if (Index == WSA_WAIT_IO_COMPLETION)
-        {
-            qDebug("UDP packet received");
         }
     }
 } // IOManager::handleUDPRead
@@ -320,9 +315,8 @@ DWORD IOManager::handleTCPConnect(SendStruct *input)
 DWORD IOManager::handleSend(SendStruct *input)
 {
     DWORD                Flags{ 0 };
-    DWORD                Index;
+    DWORD                Index, BytesTransferred;
     LPSOCKET_INFORMATION SocketInfo;
-    OVERLAPPED           overlapped;
     WSAEVENT             EventArray[1];
     int                  n, count = 0;
 
@@ -386,8 +380,11 @@ DWORD IOManager::handleSend(SendStruct *input)
             }
             else if (input->connConfig->connectionType == 0) //UDP
             {
+                struct sockaddr serv = *((struct sockaddr *)input->server);
+                int             size = sizeof(serv);
+
                 if ((n = sendUDPPacket(SocketInfo->Socket, &(SocketInfo->DataBuf), 1, Flags,
-                                       &(SocketInfo->Overlapped), input->server, offset, packetSize)) < 0)
+                                       &(SocketInfo->Overlapped), (struct sockaddr *)&serv, size, offset, packetSize)) < 0)
                 {
                     qDebug("Sending UDP packet failed with error %d: ", n);
                 }
@@ -432,14 +429,6 @@ void IOManager::readRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED
     }
     SI->BytesRECV += BytesTransferred;
 
-    // Too slow when threaded... directly append to file
-//    std::fstream outputFile;
-//    qDebug("Bytes received: %lu", SI->BytesRECV);
-//    std::string  strBuffer(SI->DataBuf.buf, BytesTransferred);
-//    outputFile.open("output.txt", std::fstream::app);
-//    outputFile << strBuffer;
-//    qDebug("Size of write transfer is: %d characters", strBuffer.length());
-//    outputFile.close();
     writeToFile(Overlapped, BytesTransferred);
 
     if (WSARecv(SI->Socket, &(SI->DataBuf), 1, &RecvBytes, &Flags,
@@ -456,17 +445,7 @@ void IOManager::readRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED
 
 void IOManager::UDPReadRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags)
 {
-    DWORD RecvBytes;
-    DWORD Flags;
-
-    Flags = 0;
-    // Reference the WSAOVERLAPPED structure as a SOCKET_INFORMATION structure
-    LPSOCKET_INFORMATION SI = (LPSOCKET_INFORMATION)Overlapped;
-
-    SI->BytesRECV += BytesTransferred;
-
     writeToFile(Overlapped, BytesTransferred);
-//    qDebug("Size of write transfer is: %d characters", strBuffer.length());
 } // IOManager::UDPReadRoutine
 
 
@@ -502,25 +481,25 @@ int IOManager::sendTCPPacket(SOCKET s, WSABUF *lpBuffers, DWORD dwBufferCount, D
 }
 
 
-int IOManager::sendUDPPacket(SOCKET s, WSABUF *lpBuffers, DWORD dwBufferCount, DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped, sockaddr_in *server, int &offset, int packetSize)
+int IOManager::sendUDPPacket(SOCKET s, WSABUF *lpBuffers, DWORD dwBufferCount, DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped,
+                             struct sockaddr *server, int size, int &offset, int packetSize)
 {
-    size_t size = sizeof(*server);
+    int   n;
+    DWORD BytesTransferred;
 
-    if (WSASendTo(s, lpBuffers, dwBufferCount, NULL, dwFlags, (struct sockaddr *)server, size,
-                  lpOverlapped, NULL) == SOCKET_ERROR)
+    n = WSASendTo(s, lpBuffers, 1, &BytesTransferred, dwFlags,
+                  server, size, lpOverlapped, NULL);
+
+    if (n == 0 || (n == SOCKET_ERROR && WSAGetLastError() == WSA_IO_PENDING))
     {
-        if (WSAGetLastError() != WSA_IO_PENDING)
-        {
-            qDebug("WSASendTo failed with error: %d", WSAGetLastError());
-            return(-1);
-        }
-        else
-        {
-            qDebug("Error: %d", WSAGetLastError());
-            ui.printToTerminal("Sent bytes: " + std::to_string(lpOverlapped->InternalHigh));
-            offset += packetSize;
-            return(0);
-        }
+        qDebug("Sent bytes: %lu", lpOverlapped->InternalHigh);
+        offset++;  // use to keep count of packets sent for now
+        return(0);
+    }
+    else
+    {
+        qDebug("Failed to send UDP Packet: %d", WSAGetLastError());
+        return(-1);
     }
 }
 
@@ -529,12 +508,13 @@ void IOManager::writeToFile(LPWSAOVERLAPPED Overlapped, DWORD BytesTransferred)
 {
     LPSOCKET_INFORMATION SI = (LPSOCKET_INFORMATION)Overlapped;
 
-    qDebug("Packets Received: %lu", ++(SI->BytesSEND));
+//    qDebug("Packets Received: %lu", ++(SI->BytesSEND));
     std::fstream outputFile;
-    qDebug("Bytes received: %lu", BytesTransferred);
+//    qDebug("Bytes received: %lu", BytesTransferred);
     std::string  strBuffer(SI->DataBuf.buf, BytesTransferred);
+
     outputFile.open("output.txt", std::fstream::app);
     outputFile << strBuffer;
-    qDebug("Size of write transfer is: %d characters", strBuffer.length());
+//    qDebug("Size of write transfer is: %d characters", strBuffer.length());
     outputFile.close();
 }

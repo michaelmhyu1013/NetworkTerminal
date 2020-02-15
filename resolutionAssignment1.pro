@@ -16,10 +16,16 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    Client.cpp \
     ConnectionManager.cpp \
     GlobalUIManager.cpp \
     IOManager.cpp \
+    Server.cpp \
+    TCPClient.cpp \
+    TCPServer.cpp \
     TimeClock.cpp \
+    UDPClient.cpp \
+    UDPServer.cpp \
     WindowsSocketManager.cpp \
     configurationwindow.cpp \
     dialog.cpp \
@@ -29,13 +35,19 @@ SOURCES += \
     mainwindow.cpp
 
 HEADERS += \
+    Client.h \
     ConnectionConfigurations.h \
     ConnectionManager.h \
     Definitions.h \
     GlobalUIManager.h \
     IOManager.h \
     RoutineStructures.h \
+    Server.h \
+    TCPClient.h \
+    TCPServer.h \
     TimeClock.h \
+    UDPClient.h \
+    UDPServer.h \
     WSAEvents.h \
     WindowsSocketManager.h \
     WindowsThreadService.h \
