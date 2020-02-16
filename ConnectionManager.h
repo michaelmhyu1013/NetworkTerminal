@@ -22,28 +22,26 @@ public:
     void createUDPServer(ConnectionConfigurations *connConfig);
     void createTCPServer(ConnectionConfigurations *connConfig);
     void uploadFile(ConnectionConfigurations *connConfig, std::wstring fileName);
+    void cleanUp();
 
 protected:
-    WindowsThreadService *threadService;
-    WSADATA              WSAData;
-    HANDLE               acceptThread, readThread, writeThread, connectThread, fileThread;
-    struct sockaddr_in   client, server;
-    struct hostent       *hp;
-    WSAEvents            *events;
-    DWORD                acceptThreadID, readThreadID, writeThreadID, connectThreadID, fileThreadID;
-    AcceptStruct         *asInfo;
-    int                  n;
-    WORD                 wVersionRequested = MAKEWORD(2, 2);
-    char                 *outputBuffer     = new char[MAX_FILE_SIZE];
+    WORD               wVersionRequested = MAKEWORD(2, 2);
+    WSADATA            WSAData;
+    struct sockaddr_in client, server;
+    struct hostent     *hp;
+    AcceptStruct       *asInfo;
+    WSAEvents          *events;
+    bool               clientConnected{ 0 }, serverConnected{ 0 };
+    int                n;
+    char               *outputBuffer = new char[MAX_FILE_SIZE];
 
 private:
     int bindServer(ConnectionConfigurations *connConfig);
     int bindUDPClient(sockaddr_in &client, SendStruct *ss);
     int configureClientAddressStructures(ConnectionConfigurations *connConfig, SendStruct *ss);
-    void cleanUp();
+
+    Client *clnt;
+    Server *serv;
 
     ~ConnectionManager();
-
-    Client clnt;
-    Server serv;
 };

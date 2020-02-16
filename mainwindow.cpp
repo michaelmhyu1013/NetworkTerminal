@@ -252,3 +252,10 @@ void MainWindow::on_actionUpload_File_triggered()
 
     connManager->uploadFile(connConfig, s_fileName);
 }
+
+
+void MainWindow::on_actionClose_connection_triggered()
+{
+    qDebug("closed");
+    connManager->cleanUp();
+}

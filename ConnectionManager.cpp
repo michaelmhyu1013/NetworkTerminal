@@ -20,13 +20,16 @@
  * ----------------------------------------------------------------------------------------------------------------------*/
 
 #include "ConnectionManager.h"
+#include "TCPClient.h"
+#include "TCPServer.h"
+#include "UDPClient.h"
+#include "UDPServer.h"
 #include <QDebug>
 #include <QString>
 
 ConnectionManager::ConnectionManager()
-    : threadService(new WindowsThreadService())
+    : asInfo(new AcceptStruct())
     , events(new WSAEvents())
-    , asInfo(new AcceptStruct())
 {
     asInfo->events = events;
     memset(outputBuffer, '\0', MAX_FILE_SIZE * sizeof(char));
@@ -39,7 +42,7 @@ void ConnectionManager::createUDPClient(ConnectionConfigurations *connConfig)
     memset((char *)&server, 0, sizeof(server));
     memset((char *)&client, 0, sizeof(client));
 
-    SendStruct *ss = new SendStruct(connConfig, this->events, this->outputBuffer, &server);
+    SendStruct *ss = new SendStruct(connConfig, this->events, this->outputBuffer, &server, &clientConnected);
 
     if ((n = configureClientAddressStructures(connConfig, ss)) < 0)
     {
@@ -50,12 +53,15 @@ void ConnectionManager::createUDPClient(ConnectionConfigurations *connConfig)
     {
         qDebug("Bind to UDP server failed: %d", n);
     }
+    clnt = new UDPClient(ss);
 
-    if ((writeThread = CreateThread(NULL, 0, threadService->onSendRoutine,
-                                    (LPVOID)ss, 0, &writeThreadID)) == NULL)
+    if ((n = clnt->startup()) < 0)
     {
-        OutputDebugStringA("writeThread failed with error\n");
+        qDebug("Client startup failed with error: %d", n);
+        WSACleanup();
+        cleanUp();
     }
+    clientConnected = true;
 }
 
 
@@ -63,7 +69,7 @@ void ConnectionManager::createTCPClient(ConnectionConfigurations *connConfig)
 {
     qDebug("tcpclient");
 
-    SendStruct *ss = new SendStruct(connConfig, this->events, this->outputBuffer, &server);
+    SendStruct *ss = new SendStruct(connConfig, this->events, this->outputBuffer, &server, &clientConnected);
     memset((char *)&server, 0, sizeof(struct sockaddr_in));
 
     if ((n = configureClientAddressStructures(connConfig, ss)) < 0)
@@ -74,25 +80,23 @@ void ConnectionManager::createTCPClient(ConnectionConfigurations *connConfig)
     {
         OutputDebugStringA("Bind TCPClient success\n");
     }
+    clnt = new TCPClient(ss);
 
-    if ((connectThread = CreateThread(NULL, 0, threadService->onTCPConnect,
-                                    (LPVOID)ss, 0, &connectThreadID)) == NULL)
+    if ((n = clnt->startup()) < 0)
     {
-        OutputDebugStringA("connectThread failed with error\n");
+        qDebug("Client startup failed with error: %d", n);
+        WSACleanup();
+        cleanUp();
     }
-
-    //  Create thread for sending; will WFMO for COMPLETE_READ event signaled by fileThread
-    if ((writeThread = CreateThread(NULL, 0, threadService->onSendRoutine,
-                                    (LPVOID)ss, 0, &writeThreadID)) == NULL)
-    {
-        OutputDebugStringA("writeThread failed with error\n");
-    }
+    clientConnected = true;
 }
 
 
 void ConnectionManager::createUDPServer(ConnectionConfigurations *connConfig)
 {
     qDebug("udpserver");
+    asInfo->isConnected = &serverConnected;
+
     memset((char *)&server, 0, sizeof(server));
 
     if ((n = bindServer(connConfig) < 0))
@@ -103,18 +107,22 @@ void ConnectionManager::createUDPServer(ConnectionConfigurations *connConfig)
     {
         qDebug("Bind UDPServer success");
     }
+    serv = new UDPServer(asInfo);
 
-    if ((readThread = CreateThread(NULL, 0, threadService->onUDPReadRoutine,
-                                   (LPVOID)asInfo, 0, &readThreadID)) == NULL)
+    if ((n = serv->startup()) < 0)
     {
-        qDebug("readThread failed with error");
+        qDebug("Server startup failed with error: %d", n);
+        WSACleanup();
+        cleanUp();
     }
+    serverConnected = true;
 }
 
 
 void ConnectionManager::createTCPServer(ConnectionConfigurations *connConfig)
 {
-    OutputDebugStringA("tcpserver");
+    qDebug("tcpserver");
+    asInfo->isConnected = &serverConnected;
 
     memset((char *)&server, 0, sizeof(struct sockaddr_in));
 
@@ -122,45 +130,29 @@ void ConnectionManager::createTCPServer(ConnectionConfigurations *connConfig)
     {
         OutputDebugStringA("Bind TCPServer failed\n");
     }
+    serv = new TCPServer(asInfo);
 
-    if (listen(asInfo->listenSocketDescriptor, 5) == SOCKET_ERROR)
+    if ((n = serv->startup()) < 0)
     {
-        OutputDebugStringA("listen() failed with error\n");
+        qDebug("Server startup failed with error: %d", n);
+        WSACleanup();
+        cleanUp();
     }
-
-    if ((connectThread = CreateThread(NULL, 0, threadService->onConnectRoutine,
-                                      (LPVOID)asInfo, 0, &connectThreadID)) == NULL)
-    {
-        OutputDebugStringA("readThread failed with error\n");
-    }
-
-    if ((acceptThread = CreateThread(NULL, 0, threadService->onAcceptRoutine,
-                                     (LPVOID)asInfo, 0, &acceptThreadID)) == NULL)
-    {
-        OutputDebugStringA("acceptThread failed with error\n");
-    }
+    serverConnected = true;
 }
 
+
 /* ------------------------- FILE PROCESSING - TODO: move to separate class --------------------------- */
-
-
 void ConnectionManager::uploadFile(ConnectionConfigurations *connConfig, std::wstring fileName)
 {
     // Create struct for buffer management and connection configurations
     FileUploadStruct *fs = new FileUploadStruct(fileName, connConfig, this->events, this->outputBuffer);
 
-    //  Create thread for file upload
-    if ((fileThread = CreateThread(NULL, 0, threadService->onFileUpload,
-                                   (LPVOID)fs, 0, &fileThreadID)) == NULL)
-    {
-        OutputDebugStringA("fileThread failed with error\n");
-    }
+    clnt->readFileToOutputBuffer(fs);
 }
 
 
 /* -------------------------------- UTIL FUNCTIONS - TODO: move to separate class ------------------------------ */
-
-
 int ConnectionManager::bindServer(ConnectionConfigurations *connConfig)
 {
     WSAStartup(wVersionRequested, &WSAData);
@@ -177,7 +169,7 @@ int ConnectionManager::bindServer(ConnectionConfigurations *connConfig)
 
     if (bind(asInfo->listenSocketDescriptor, (PSOCKADDR)&server, sizeof(server)) == SOCKET_ERROR)
     {
-        qDebug("Can't bind name to socket");
+        qDebug("Can't bind name to socket: %d", WSAGetLastError());
         return(-2);
     }
     return(0);
@@ -237,9 +229,29 @@ int ConnectionManager::configureClientAddressStructures(ConnectionConfigurations
  */
 void ConnectionManager::cleanUp()
 {
+    if (clientConnected)
+    {
+        clientConnected = false;
+        qDebug("Client closed sockets with return value: %d", clnt->closeSockets());
+        qDebug("Client closed thread handles with return value: %d", clnt->closeHandles());
+        free(clnt);
+    }
+
+    if (serverConnected)
+    {
+        serverConnected = false;
+        qDebug("Server closed sockets with return value: %d", serv->closeSockets());
+        qDebug("Server closed thread handles with return value: %d", serv->closeHandles());
+        free(serv);
+    }
 }
 
 ConnectionManager::~ConnectionManager()
 {
+    clnt->closeHandles();
+    serv->closeHandles();
     free(outputBuffer);
+    free(clnt);
+    free(serv);
+    WSACleanup();
 }

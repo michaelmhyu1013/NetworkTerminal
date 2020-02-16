@@ -18,7 +18,6 @@ struct ConnectionConfigurations
         TCP = 1,
     };
 
-
     enum CONNECT_MODE
     {
         CLIENT = 0,

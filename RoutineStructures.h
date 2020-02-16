@@ -13,6 +13,7 @@ struct AcceptStruct
     WSAEvents                *events;
     ConnectionConfigurations *connConfig;
     char                     *outputBuffer;
+    bool                     *isConnected;
 };
 
 struct SendStruct
@@ -22,12 +23,14 @@ struct SendStruct
     WSAEvents                *events;
     char                     *outputBuffer;
     struct sockaddr_in       *server;
+    bool                     *isConnected;
     SendStruct(ConnectionConfigurations *connConfig, WSAEvents *events,
-               char *outputBuffer, struct sockaddr_in *server)
+               char *outputBuffer, struct sockaddr_in *server, bool *isConnected)
         : connConfig(connConfig)
         , events(events)
         , outputBuffer(outputBuffer)
-        , server(server) {}
+        , server(server)
+        , isConnected(isConnected) {}
 };
 
 struct FileUploadStruct

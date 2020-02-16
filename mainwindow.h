@@ -43,4 +43,5 @@ private slots:
     void on_actionConnect_as_Client_triggered();
     void on_actionConnect_as_Server_triggered();
     void on_actionUpload_File_triggered();
+    void on_actionClose_connection_triggered();
 };

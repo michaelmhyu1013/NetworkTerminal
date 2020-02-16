@@ -21,6 +21,7 @@ typedef struct _SOCKET_INFORMATION
     DWORD         totalTransmissions;
     DWORD         packetSize;
     DWORD         packetsToSend;
+    WSAEVENT      DETECT_UDP_READ = WSACreateEvent();
 } SOCKET_INFORMATION, *LPSOCKET_INFORMATION;
 
 

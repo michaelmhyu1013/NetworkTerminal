@@ -54,6 +54,8 @@
     </property>
     <addaction name="actionConnect_as_Client"/>
     <addaction name="actionConnect_as_Server"/>
+    <addaction name="separator"/>
+    <addaction name="actionClose_connection"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuResolution"/>
@@ -101,6 +103,11 @@
    </property>
    <property name="text">
     <string>Upload File...</string>
+   </property>
+  </action>
+  <action name="actionClose_connection">
+   <property name="text">
+    <string>Close connection</string>
    </property>
   </action>
  </widget>

@@ -2,8 +2,13 @@
 #include "Client.h"
 
 
-class UDPClient : Client
+class UDPClient : public Client
 {
 public:
     UDPClient();
+    UDPClient(SendStruct *ss)
+        : Client(ss) {}
+
+    int startup() override;
+    int closeHandles() override;
 };

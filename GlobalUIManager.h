@@ -18,4 +18,5 @@ public:
     inline void setUIObject(Ui::MainWindow *ui) { this->ui = ui; }
 
     void printToTerminal(std::string s);
+
 };

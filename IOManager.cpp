@@ -156,7 +156,7 @@ DWORD IOManager::handleFileReadEX(FileUploadStruct *input)
 
 DWORD IOManager::handleAccept(AcceptStruct *input)
 {
-    while (TRUE)
+    while (input->isConnected)
     {
         // TODO: implement as AcceptEx()
         if ((input->acceptSocketDescriptor = accept(input->listenSocketDescriptor, NULL, NULL)) == INVALID_SOCKET)
@@ -186,9 +186,9 @@ DWORD IOManager::handleConnect(AcceptStruct *input)
 
     EventArray[0] = input->events->DETECT_CONNECTION; // Dummy event to put thread into alertable state for completion routine
 
-    while (TRUE)
+    while (input->isConnected)
     {
-        while (TRUE)
+        while (input->isConnected)
         {
             qDebug("Waiting for connection");
 
@@ -274,7 +274,7 @@ DWORD IOManager::handleUDPRead(AcceptStruct *input)
 
     Flags = 0;
 
-    while (TRUE)
+    while (input->isConnected)
     {
         if (WSARecvFrom(SocketInfo->Socket, &(SocketInfo->DataBuf), 1, NULL, &Flags, NULL, NULL,
                         &(SocketInfo->Overlapped), UDPReadRoutine) == SOCKET_ERROR)
@@ -322,7 +322,7 @@ DWORD IOManager::handleSend(SendStruct *input)
 
     EventArray[0] = input->events->COMPLETE_READ;
 
-    while (TRUE)
+    while (input->isConnected)
     {
         qDebug("Waiting for file input to be detected and finish reading...");
         Index = WSAWaitForMultipleEvents(1, EventArray, FALSE, WSA_INFINITE, FALSE);

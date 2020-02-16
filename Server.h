@@ -1,11 +1,21 @@
-#ifndef SERVER_H
-#define SERVER_H
+#pragma once
 
+#include "WindowsThreadService.h"
 
 class Server
 {
 public:
     Server();
-};
+    Server(AcceptStruct *asInfo)
+        : asInfo(asInfo) {}
 
-#endif // SERVER_H
+    int virtual startup() = 0;
+    int virtual closeHandles() = 0;
+    int virtual closeSockets();
+
+protected:
+    AcceptStruct         *asInfo;
+    HANDLE               acceptThread, readThread, writeThread, connectThread, fileThread;
+    WindowsThreadService *threadService;
+    WSADATA              *wsaData;
+};
