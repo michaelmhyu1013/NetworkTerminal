@@ -44,6 +44,7 @@ DWORD WINAPI IOManager::onWriteToFile(LPVOID param)
 
     std::fstream outputFile;
     std::string  strBuffer{ buffer };
+
     outputFile.open("output.txt", std::fstream::app);
     outputFile << strBuffer;
     outputFile.close();
@@ -104,6 +105,7 @@ DWORD IOManager::handleFileRead(FileUploadStruct *input)
     }
     return(0);
 } // IOManager::handleFileRead
+
 
 DWORD IOManager::handleAccept(AcceptStruct *input)
 {
@@ -420,6 +422,7 @@ void IOManager::sendRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED
 {
 } // IOManager::sendRoutine
 
+
 /*---------------- HELPER FUNCS ------------------------ */
 int IOManager::sendTCPPacket(SOCKET s, WSABUF *lpBuffers, DWORD dwBufferCount, DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped, int &offset, int packetSize)
 {
@@ -468,12 +471,9 @@ void IOManager::writeToFile(LPWSAOVERLAPPED Overlapped, DWORD BytesTransferred)
     LPSOCKET_INFORMATION SI = (LPSOCKET_INFORMATION)Overlapped;
 
     //    qDebug("Packets Received: %lu", ++(SI->BytesSEND));
-    std::fstream outputFile;
-    //    qDebug("Bytes received: %lu", BytesTransferred);
-    std::string  strBuffer(SI->DataBuf.buf, BytesTransferred);
+    std::fstream outputFile{ "output.txt", std::ios_base::binary | std::fstream::app };
 
-    outputFile.open("output.txt", std::fstream::app);
-    outputFile << strBuffer;
+    outputFile.write(SI->DataBuf.buf, BytesTransferred);
     //    qDebug("Size of write transfer is: %d characters", strBuffer.length());
     outputFile.close();
 }
