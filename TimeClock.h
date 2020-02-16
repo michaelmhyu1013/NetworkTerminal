@@ -23,5 +23,6 @@ public:
     inline void start() { startTime = std::chrono::system_clock::now(); }
     inline void end() { endTime = std::chrono::system_clock::now(); }
     double getRoundTripTime() const;
+    void resetTime();
     std::string &printRoundTripTime() const;
 };

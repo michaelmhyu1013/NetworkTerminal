@@ -16,7 +16,7 @@ int TCPServer::startup()
     if ((connectThread = CreateThread(NULL, 0, threadService->onConnectRoutine,
                                       (LPVOID)asInfo, 0, &connectThreadID)) == NULL)
     {
-        OutputDebugStringA("readThread failed with error\n");
+        OutputDebugStringA("connectThread failed with error\n");
         return(-2);
     }
 

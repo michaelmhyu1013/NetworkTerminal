@@ -27,6 +27,7 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <mswsock.h>
 #include <QDebug>
 
 IOManager::IOManager()
@@ -39,12 +40,10 @@ IOManager::IOManager()
 
 DWORD WINAPI IOManager::onWriteToFile(LPVOID param)
 {
-    qDebug("Executing write to file thread");
     char         *buffer = static_cast<char *>(param);
 
     std::fstream outputFile;
     std::string  strBuffer{ buffer };
-    qDebug("Size of write transfer is: %d characters", strBuffer.length());
     outputFile.open("output.txt", std::fstream::app);
     outputFile << strBuffer;
     outputFile.close();
@@ -106,72 +105,40 @@ DWORD IOManager::handleFileRead(FileUploadStruct *input)
     return(0);
 } // IOManager::handleFileRead
 
-
-DWORD IOManager::handleFileReadEX(FileUploadStruct *input)
-{
-    qDebug("handle File Read invoked");
-    OVERLAPPED    overlapped{ 0 };
-    HANDLE        hFile;
-    const wchar_t *filename;
-    int           n, Index;
-    WSAEVENT      EventArray[1];
-
-    EventArray[0] = input->events->COMPLETE_READ;
-    filename      = input->fileName.c_str();
-
-    // This should techncially work if I global alloc the socket here with a buffer large enough to store the file...
-
-    hFile = CreateFile(
-        filename,
-        GENERIC_READ,
-        0,
-        NULL,
-        OPEN_EXISTING,
-        FILE_FLAG_OVERLAPPED,
-        NULL
-        );
-
-    if (hFile == INVALID_HANDLE_VALUE)
-    {
-        qDebug("Invalid file handle");
-        return(-1);
-    }
-    PurgeComm(hFile, PURGE_RXCLEAR);
-
-    if ((n = ReadFileEx(hFile, input->outputBuffer, MAX_FILE_SIZE, &overlapped, sendRoutineEX)) == 0)
-    {
-        qDebug("Readfileex failed with error %lu", GetLastError());
-    }
-
-    if (GetLastError() != ERROR_SUCCESS)
-    {
-        qDebug("GetLastError Readfileex error: %lu", GetLastError());
-    }
-    CloseHandle(hFile);
-
-    Index = WSAWaitForMultipleEvents(1, EventArray, FALSE, WSA_INFINITE, TRUE);
-    return(0);
-} // IOManager::handleFileRead
-
-
 DWORD IOManager::handleAccept(AcceptStruct *input)
 {
     while (input->isConnected)
     {
         // TODO: implement as AcceptEx()
-        if ((input->acceptSocketDescriptor = accept(input->listenSocketDescriptor, NULL, NULL)) == INVALID_SOCKET)
+        while (input->isConnected)
         {
-            qDebug("Listen failed: %d", WSAGetLastError());
-        }
+            // TODO: implement as AcceptEx()
+            if ((input->acceptSocketDescriptor = accept(input->listenSocketDescriptor, NULL, NULL)) == INVALID_SOCKET)
+            {
+                qDebug("Listen failed: %d", WSAGetLastError());
+            }
 
-        if (WSASetEvent(input->events->DETECT_CONNECTION) == FALSE)
-        {
-            qDebug("WSASetEvent failed with error");
+            if (WSASetEvent(input->events->DETECT_CONNECTION) == FALSE)
+            {
+                qDebug("WSASetEvent failed with error");
+            }
+            else
+            {
+                qDebug("Event set in handleAccept");
+            }
         }
-        else
-        {
-            qDebug("Event set in handleAccept");
-        }
+//        if (!AcceptEx(input->listenSocketDescriptor, input->acceptSocketDescriptor, static_cast<PVOID>(AcceptBuffer),
+//                      0, sizeof(SOCKADDR_IN) + 16, sizeof(SOCKADDR_IN) + 16, &bytesReceived, &listenOverlapped))
+//        {
+//            if (WSAGetLastError() != ERROR_IO_PENDING)
+//            {
+//                qDebug("AcceptEx() failed with error %d\n", WSAGetLastError());
+//            }
+//            else
+//            {
+//                qDebug("AcceptEx() is OK!\n");
+//            }
+//        }
     }
 }
 
@@ -190,8 +157,6 @@ DWORD IOManager::handleConnect(AcceptStruct *input)
     {
         while (input->isConnected)
         {
-            qDebug("Waiting for connection");
-
             // Set last param to TRUE; automatically returns from this function when the completion routine completes
             Index = WSAWaitForMultipleEvents(1, EventArray, FALSE, WSA_INFINITE, TRUE);
 
@@ -202,7 +167,7 @@ DWORD IOManager::handleConnect(AcceptStruct *input)
 
             if ((Index - WSA_WAIT_EVENT_0) == 0)
             {
-                qDebug("Connection received");
+//                ui.getInstance().printToTerminal("Connection received");
                 break;
             }
         }
@@ -308,6 +273,8 @@ DWORD IOManager::handleTCPConnect(SendStruct *input)
     }
     clock.getInstance().end();
     ui.getInstance().printToTerminal("Time for connection is: " + std::to_string(clock.getInstance().getRoundTripTime()) + "ms");
+//    clock.getInstance().resetTime();
+
     return(0);
 } // IOManager::handleUDPRead
 
@@ -453,15 +420,7 @@ void IOManager::sendRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED
 {
 } // IOManager::sendRoutine
 
-
-void IOManager::sendRoutineEX(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped)
-{
-    qDebug("sendRoutineEx");
-    // just loop over buffer and send over stream.
-}
-
-
-/* -------------------------- HELPER FUNCS ------------------------ */
+/*---------------- HELPER FUNCS ------------------------ */
 int IOManager::sendTCPPacket(SOCKET s, WSABUF *lpBuffers, DWORD dwBufferCount, DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped, int &offset, int packetSize)
 {
     int n = WSASend(s, lpBuffers, dwBufferCount, NULL, dwFlags, lpOverlapped, NULL);
@@ -492,7 +451,7 @@ int IOManager::sendUDPPacket(SOCKET s, WSABUF *lpBuffers, DWORD dwBufferCount, D
 
     if (n == 0 || (n == SOCKET_ERROR && WSAGetLastError() == WSA_IO_PENDING))
     {
-        qDebug("Sent bytes: %lu", lpOverlapped->InternalHigh);
+        qDebug("Sent bytes: %lu", BytesTransferred);
         offset++;  // use to keep count of packets sent for now
         return(0);
     }
@@ -508,13 +467,13 @@ void IOManager::writeToFile(LPWSAOVERLAPPED Overlapped, DWORD BytesTransferred)
 {
     LPSOCKET_INFORMATION SI = (LPSOCKET_INFORMATION)Overlapped;
 
-//    qDebug("Packets Received: %lu", ++(SI->BytesSEND));
+    //    qDebug("Packets Received: %lu", ++(SI->BytesSEND));
     std::fstream outputFile;
-//    qDebug("Bytes received: %lu", BytesTransferred);
+    //    qDebug("Bytes received: %lu", BytesTransferred);
     std::string  strBuffer(SI->DataBuf.buf, BytesTransferred);
 
     outputFile.open("output.txt", std::fstream::app);
     outputFile << strBuffer;
-//    qDebug("Size of write transfer is: %d characters", strBuffer.length());
+    //    qDebug("Size of write transfer is: %d characters", strBuffer.length());
     outputFile.close();
 }

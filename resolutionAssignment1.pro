@@ -63,7 +63,7 @@ FORMS += \
     dualdialog.ui \
     mainwindow.ui
 
-LIBS += -lws2_32
+LIBS += -lws2_32 \
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
