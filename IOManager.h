@@ -28,20 +28,17 @@ typedef struct _SOCKET_INFORMATION
 class IOManager
 {
 public:
-    IOManager();
+    IOManager() {}
     DWORD handleSend(SendStruct *input);
     DWORD handleFileRead(FileUploadStruct *input);
     DWORD handleFileReadEX(FileUploadStruct *input);
-    DWORD handleConnect(AcceptStruct *input);
+    DWORD handleTCPClientConnect(AcceptStruct *input);
     DWORD handleAccept(AcceptStruct *input);
     DWORD handleUDPRead(AcceptStruct *input);
-    DWORD handleTCPConnect(SendStruct *input);
-
-    static DWORD WINAPI onWriteToFile(LPVOID param);
+    DWORD performTCPConnect(SendStruct *input);
 
     void static CALLBACK readRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags);
     void static CALLBACK sendRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags);
-    void static CALLBACK sendRoutineEX(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped);
     void static CALLBACK UDPReadRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags);
 
 

@@ -4,7 +4,7 @@
 class UDPServer : public Server
 {
 public:
-    UDPServer();
+    UDPServer() {}
     UDPServer(AcceptStruct *asInfo)
         : Server(asInfo) {}
 

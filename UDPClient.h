@@ -5,7 +5,7 @@
 class UDPClient : public Client
 {
 public:
-    UDPClient();
+    UDPClient() {}
     UDPClient(SendStruct *ss)
         : Client(ss) {}
 

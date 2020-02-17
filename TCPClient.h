@@ -4,12 +4,13 @@
 class TCPClient : public Client
 {
 public:
-    TCPClient();
+    TCPClient() {}
     TCPClient(SendStruct *ss)
         : Client(ss) {}
 
     int startup() override;
     int closeHandles() override;
+
 protected:
     DWORD connectThreadID;
 };

@@ -1,6 +1,6 @@
 /*------------------------------------------------------------------------------------------------------------------
- * -- SOURCE FILE: IOManager.cpp - This class encapsulates all Windows Completion Routine functions
- * --               that can be called from our application. Key functionalities involve reading and
+ * -- SOURCE FILE: IOManager.cpp - This class encapsulates all Windows Completion Routine functions nad thread
+ * --               functions that can be called from our application. Key functionalities involve reading and
  * --               writing from a socket input, and reading a file input from the local disk.
  * --               The completion routine functions will be passed as the parameter for the
  * --               creation of a Windows thread to accomplish multi-processing.
@@ -9,7 +9,21 @@
  * -- PROGRAM: NetworkTerminal
  * --
  * -- FUNCTIONS:
- * --
+ * --                   DWORD handleSend(SendStruct *input);
+ * --                   DWORD handleFileRead(FileUploadStruct *input);
+ * --                   DWORD handleFileReadEX(FileUploadStruct *input);
+ * --                   DWORD handleTCPClientConnect(AcceptStruct *input);
+ * --                   DWORD handleAccept(AcceptStruct *input);
+ * --                   DWORD handleUDPRead(AcceptStruct *input);
+ * --                   DWORD performTCPConnect(SendStruct *input);
+ *
+ * --                   void static CALLBACK readRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags);
+ * --                   void static CALLBACK sendRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags);
+ * --                   void static CALLBACK UDPReadRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags);
+ *
+ * --                   int sendTCPPacket(SOCKET s, WSABUF *lpBuffers, DWORD dwBufferCount, DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped, int &offset, int packetSize);
+ * --                   int sendUDPPacket(SOCKET s, WSABUF *lpBuffers, DWORD dwBufferCount, DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped, struct sockaddr *server, int size, int &offset, int packetSize);
+ * --                   void static writeToFile(LPWSAOVERLAPPED Overlapped, DWORD BytesTransferred);
  * --
  * -- DATE: Feb 5, 2020
  * --
@@ -19,8 +33,9 @@
  * --
  * -- PROGRAMMER: Michael Yu
  * --
- * -- NOTES:
- * --
+ * -- NOTES:    The Server and Client classes creates threads that will depend on the callback funtions defined in this class.
+ * --           This class is not instantiated but is referenced by WindowsTheadService in order to pass the static start routine
+ * --           to the thread.
  * ----------------------------------------------------------------------------------------------------------------------*/
 #include "IOManager.h"
 #include <cmath>
@@ -30,28 +45,8 @@
 #include <mswsock.h>
 #include <QDebug>
 
-IOManager::IOManager()
-{
-}
 
-
-/* -------------------------- THREAD FUNCTIONS ------------------------ */
-
-
-DWORD WINAPI IOManager::onWriteToFile(LPVOID param)
-{
-    char         *buffer = static_cast<char *>(param);
-
-    std::fstream outputFile;
-    std::string  strBuffer{ buffer };
-
-    outputFile.open("output.txt", std::fstream::app);
-    outputFile << strBuffer;
-    outputFile.close();
-    return(0);
-}
-
-
+/* ---------------------------------------------------- THREAD FUNCTIONS ------------------------------------------------------ */
 DWORD IOManager::handleFileRead(FileUploadStruct *input)
 {
     qDebug("handle File Read invoked");
@@ -62,17 +57,7 @@ DWORD IOManager::handleFileRead(FileUploadStruct *input)
 
     filename = input->fileName.c_str();
 
-    hFile = CreateFile(
-        filename,
-        GENERIC_READ,
-        0,
-        NULL,
-        OPEN_EXISTING,
-        FILE_ATTRIBUTE_NORMAL,
-        NULL
-        );
-
-    if (hFile == INVALID_HANDLE_VALUE)
+    if ((hFile = CreateFile(filename, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL)) == INVALID_HANDLE_VALUE)
     {
         qDebug("Invalid file handle");
         return(-1);
@@ -95,7 +80,6 @@ DWORD IOManager::handleFileRead(FileUploadStruct *input)
         totalBytesRead += dwBytesRead;
     }
     CloseHandle(hFile);
-
     input->connConfig->totalBytes = totalBytesRead;
 
     if (!WSASetEvent(input->events->COMPLETE_READ))
@@ -107,26 +91,45 @@ DWORD IOManager::handleFileRead(FileUploadStruct *input)
 } // IOManager::handleFileRead
 
 
+/*------------------------------------------------------------------------------------------------------------------
+ * -- FUNCTION: handleAccept
+ * --
+ * -- DATE: Feb14, 2020
+ * --
+ * -- REVISIONS:
+ * --
+ * -- DESIGNER: Michael Yu
+ * --
+ * -- PROGRAMMER: Michael Yu
+ * --
+ * -- INTERFACE: handleAccept(AcceptStruct *input)
+ * --                       input   - structure that contains the socket that will be used to store the accepted client connection
+ * --
+ * -- RETURNS: 0 if a client connection is accepted, else a negative number
+ * --
+ * ----------------------------------------------------------------------------------------------------------------------*/
 DWORD IOManager::handleAccept(AcceptStruct *input)
 {
     while (input->isConnected)
     {
-        // TODO: implement as AcceptEx()
         while (input->isConnected)
         {
             // TODO: implement as AcceptEx()
             if ((input->acceptSocketDescriptor = accept(input->listenSocketDescriptor, NULL, NULL)) == INVALID_SOCKET)
             {
                 qDebug("Listen failed: %d", WSAGetLastError());
+                return(-1);
             }
 
             if (WSASetEvent(input->events->DETECT_CONNECTION) == FALSE)
             {
                 qDebug("WSASetEvent failed with error");
+                return(-2);
             }
             else
             {
                 qDebug("Event set in handleAccept");
+                return(0);
             }
         }
 //        if (!AcceptEx(input->listenSocketDescriptor, input->acceptSocketDescriptor, static_cast<PVOID>(AcceptBuffer),
@@ -144,8 +147,29 @@ DWORD IOManager::handleAccept(AcceptStruct *input)
     }
 }
 
-
-DWORD IOManager::handleConnect(AcceptStruct *input)
+/*------------------------------------------------------------------------------------------------------------------
+ * -- FUNCTION: handleTCPClientConnect
+ * --
+ * -- DATE: Feb14, 2020
+ * --
+ * -- REVISIONS:
+ * --
+ * -- DESIGNER: Michael Yu
+ * --
+ * -- PROGRAMMER: Michael Yu
+ * --
+ * -- INTERFACE: handleTCPClientConnect(AcceptStruct *input)
+ * --                       input   - structure that contains the socket that contains the connected client information
+ * --
+ * -- RETURNS: 0 if a client connection is accepted, else a negative number
+ * --
+ * -- NOTES:    Thread function that the TCP server will execute to listen for incoming connections and to read data that is
+ * --           streamed from the socket. A global structure is allocated for the socket descriptor containing the connected
+ * --           client information, which will need to be deallocated upon closing of the connection. The thread running this
+ * --           function is placed in an an alertable state prior to posting a completion routine to handle reading data from
+ * --           the client socket.
+ * ----------------------------------------------------------------------------------------------------------------------*/
+DWORD IOManager::handleTCPClientConnect(AcceptStruct *input)
 {
     DWORD                Flags;
     LPSOCKET_INFORMATION SocketInfo;
@@ -169,7 +193,7 @@ DWORD IOManager::handleConnect(AcceptStruct *input)
 
             if ((Index - WSA_WAIT_EVENT_0) == 0)
             {
-//                ui.getInstance().printToTerminal("Connection received");
+                qDebug("Connection received");
                 break;
             }
         }
@@ -207,6 +231,28 @@ DWORD IOManager::handleConnect(AcceptStruct *input)
 } // IOManager::handleConnect
 
 
+/*------------------------------------------------------------------------------------------------------------------
+ * -- FUNCTION: handleUDPRead
+ * --
+ * -- DATE: Feb14, 2020
+ * --
+ * -- REVISIONS:
+ * --
+ * -- DESIGNER: Michael Yu
+ * --
+ * -- PROGRAMMER: Michael Yu
+ * --
+ * -- INTERFACE: handleUDPRead(AcceptStruct *input)
+ * --                       input   - structure that contains the socket that contains the connected client information
+ * --
+ * -- RETURNS: 0 if a client connection is accepted, else a negative number
+ * --
+ * -- NOTES:    Thread function that the UDP server will execute to listen for incoming data from the bound socket. The loop exits
+ * --           upon the user closing the connection from the QT UI. A global structure is allocated for the socket descriptor
+ * --           containing the connected client information, which will need to be deallocated upon closing of the connection.
+ * --           The thread running this function is placed in an an alertable state prior to posting a completion routine to handle
+ * --           reading data from the client socket.
+ * ----------------------------------------------------------------------------------------------------------------------*/
 DWORD IOManager::handleUDPRead(AcceptStruct *input)
 {
     DWORD                Flags;
@@ -261,33 +307,37 @@ DWORD IOManager::handleUDPRead(AcceptStruct *input)
     }
 } // IOManager::handleUDPRead
 
-
-DWORD IOManager::handleTCPConnect(SendStruct *input)
-{
-    clock.getInstance().start();
-
-    if (connect(input->clientSocketDescriptor, (struct sockaddr *)input->server, sizeof(*(input->server))) == SOCKET_ERROR)
-    {
-        ui.getInstance().printToTerminal("Failed to connect to desired host\n");
-        closesocket(input->clientSocketDescriptor);
-        WSACleanup();
-        return(-1);
-    }
-    clock.getInstance().end();
-    ui.getInstance().printToTerminal("Time for connection is: " + std::to_string(clock.getInstance().getRoundTripTime()) + "ms");
-//    clock.getInstance().resetTime();
-
-    return(0);
-} // IOManager::handleUDPRead
-
-
+/*------------------------------------------------------------------------------------------------------------------
+ * -- FUNCTION: handleSend
+ * --
+ * -- DATE: Feb14, 2020
+ * --
+ * -- REVISIONS:
+ * --
+ * -- DESIGNER: Michael Yu
+ * --
+ * -- PROGRAMMER: Michael Yu
+ * --
+ * -- INTERFACE: handleSend(SendStruct *input)
+ * --                       input   - structure that contains the socket that contains the connected client information
+ * --
+ * -- RETURNS: 0 upon successfully exiting the send loop
+ * --
+ * -- NOTES:    Thread function that the TCPClient and UDPClient will execute to await for a valid file input to read data from.
+ * --           The data will then be sent through the socket to the server in the designated packet size over the connection.
+ * --           It will simply loop a designated amount of times to transmit the data. A global structure is allocated for the socket descriptor
+ * --           containing the connected client information, which will need to be deallocated upon closing of the connection.
+ * --           The thread running this function is placed in an an alertable state prior to posting a completion routine to handle
+ * --           reading data from the client socket.
+ * ----------------------------------------------------------------------------------------------------------------------*/
 DWORD IOManager::handleSend(SendStruct *input)
 {
     DWORD                Flags{ 0 };
-    DWORD                Index, BytesTransferred;
+    DWORD                Index;
     LPSOCKET_INFORMATION SocketInfo;
     WSAEVENT             EventArray[1];
     int                  n, count = 0;
+    int                  packetSize = input->connConfig->packetSize;
 
     EventArray[0] = input->events->COMPLETE_READ;
 
@@ -316,7 +366,6 @@ DWORD IOManager::handleSend(SendStruct *input)
             return(-1);
         }
         SocketInfo->Socket = input->clientSocketDescriptor;
-        int packetSize = input->connConfig->packetSize;
 
         ZeroMemory(&(SocketInfo->Overlapped), sizeof(WSAOVERLAPPED));
         SocketInfo->BytesSEND          = 0;
@@ -369,14 +418,74 @@ DWORD IOManager::handleSend(SendStruct *input)
     return(0);
 } // IOManager::handleSend
 
+/*------------------------------------------------------------------------------------------------------------------
+ * -- FUNCTION: performTCPConnect
+ * --
+ * -- DATE: Feb14, 2020
+ * --
+ * -- REVISIONS:
+ * --
+ * -- DESIGNER: Michael Yu
+ * --
+ * -- PROGRAMMER: Michael Yu
+ * --
+ * -- INTERFACE: performTCPConnect(SendStruct *input)
+ * --                       input   - structure that contains the socket that contains the connected client information
+ * --                                   and the server structure to connect to
+ * --
+ * -- RETURNS: 0 if a the TCP client can successfully connect to the server, else -1
+ * --
+ * -- NOTES:    Thread function that the TCPClient and UDPClient will execute to await for a valid file input to read data from.
+ * --           The data will then be sent through the socket to the server in the designated packet size over the connection.
+ * --           It will simply loop a designated amount of times to transmit the data. A global structure is allocated for the socket descriptor
+ * --           containing the connected client information, which will need to be deallocated upon closing of the connection.
+ * --           The thread running this function is placed in an an alertable state prior to posting a completion routine to handle
+ * --           reading data from the client socket.
+ * ----------------------------------------------------------------------------------------------------------------------*/
+DWORD IOManager::performTCPConnect(SendStruct *input)
+{
+    clock.getInstance().start();
 
-/* -------------------------- COMPLETION ROUTINES ------------------------ */
+    if (connect(input->clientSocketDescriptor, (struct sockaddr *)input->server, sizeof(*(input->server))) == SOCKET_ERROR)
+    {
+        ui.getInstance().printToTerminal("Failed to connect to desired host\n");
+        closesocket(input->clientSocketDescriptor);
+        WSACleanup();
+        return(-1);
+    }
+    clock.getInstance().end();
+    ui.getInstance().printToTerminal("Time for connection is: " + std::to_string(clock.getInstance().getRoundTripTime()) + "ms");
+    return(0);
+}
+
+
+/* ------------------------------------------------------ COMPLETION ROUTINES ------------------------------------------------------ */
+/*------------------------------------------------------------------------------------------------------------------
+ * -- FUNCTION: readRoutine
+ * --
+ * -- DATE: Feb14, 2020
+ * --
+ * -- REVISIONS:
+ * --
+ * -- DESIGNER: Michael Yu
+ * --
+ * -- PROGRAMMER: Michael Yu
+ * --
+ * -- INTERFACE: readRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags)
+ * --                       Error               - stores the error that occurs from the reading operation
+ * --                       BytesTransferred    - stores the number of bytes read from the WSARecv operation
+ * --                       Overlapped          - pointer to the overlapped structure that will be used as the reference
+ * --                                               to cast to the LPSOCKET_INFORMATION
+ * --                       InFlags             - flags for the WSARecv operation
+ * -- RETURNS: void
+ * --
+ * -- NOTES:    Completion routine to be executed by the TCP server upon a call to WSARecv is made. This function checks
+ * --           to see if bytes were transferred from the WSARecv operation before closing the client socket. Upon successful
+ * --           read from the socket buffer, the data transferred will be written to 'output.txt'.
+ * ----------------------------------------------------------------------------------------------------------------------*/
 void IOManager::readRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags)
 {
     DWORD RecvBytes;
-    DWORD Flags;
-
-    Flags = 0;
     // Reference the WSAOVERLAPPED structure as a SOCKET_INFORMATION structure
     LPSOCKET_INFORMATION SI = (LPSOCKET_INFORMATION)Overlapped;
 
@@ -400,7 +509,7 @@ void IOManager::readRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED
 
     writeToFile(Overlapped, BytesTransferred);
 
-    if (WSARecv(SI->Socket, &(SI->DataBuf), 1, &RecvBytes, &Flags,
+    if (WSARecv(SI->Socket, &(SI->DataBuf), 1, &RecvBytes, &InFlags,
                 &(SI->Overlapped), readRoutine) == SOCKET_ERROR)
     {
         if (WSAGetLastError() != WSA_IO_PENDING)
@@ -411,19 +520,59 @@ void IOManager::readRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED
     }
 } // IOManager::readRoutine
 
-
+/*------------------------------------------------------------------------------------------------------------------
+ * -- FUNCTION: UDPReadRoutine
+ * --
+ * -- DATE: Feb14, 2020
+ * --
+ * -- REVISIONS:
+ * --
+ * -- DESIGNER: Michael Yu
+ * --
+ * -- PROGRAMMER: Michael Yu
+ * --
+ * -- INTERFACE: UDPReadRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags)
+ * --                       Error               - stores the error that occurs from the reading operation
+ * --                       BytesTransferred    - stores the number of bytes read from the WSARecv operation
+ * --                       Overlapped          - pointer to the overlapped structure that will be used as the reference
+ * --                                               to cast to the LPSOCKET_INFORMATION
+ * --                       InFlags             - flags for the WSARecv operation
+ * -- RETURNS: void
+ * --
+ * -- NOTES:    Completion routine to be executed by the UDP server upon a call to WSARecvFrom is made. The data read
+ * --           read from the socket buffer is simply written to the file 'output.txt'.
+ * ----------------------------------------------------------------------------------------------------------------------*/
 void IOManager::UDPReadRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags)
 {
     writeToFile(Overlapped, BytesTransferred);
 } // IOManager::UDPReadRoutine
 
 
-void IOManager::sendRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags)
-{
-} // IOManager::sendRoutine
+/*------------------------------------------------------ HELPER FUNCS ------------------------------------------------------ */
 
-
-/*---------------- HELPER FUNCS ------------------------ */
+/*------------------------------------------------------------------------------------------------------------------
+ * -- FUNCTION: sendTCPPacket
+ * --
+ * -- DATE: Feb14, 2020
+ * --
+ * -- REVISIONS:
+ * --
+ * -- DESIGNER: Michael Yu
+ * --
+ * -- PROGRAMMER: Michael Yu
+ * --
+ * -- INTERFACE: sendTCPPacket(SOCKET s, WSABUF *lpBuffers, DWORD dwBufferCount, DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped, int &offset, int packetSize)
+ * --                       s               - bound client socket that will be used to send data through
+ * --                       lpBuffers       - pointer to the buffer(s) containing the data to be sent over the connection
+ * --                       dwBufferCount   - number of buffers pointed to by lpBuffers
+ * --                       dwFlags         - flags for the WSASend operation
+ * --                       lpOverlapped    - overlapped structure that will hold any overlapped I/O from the WSASend operation
+ * --                       offset          - integer value denoting the position of the current position of the file being read from
+ * --                       packetSize      - designated integer size of the packet to be sent
+ * --
+ * -- RETURNS: 0 upon successful send through the socket, else -1
+ * --
+ * ----------------------------------------------------------------------------------------------------------------------*/
 int IOManager::sendTCPPacket(SOCKET s, WSABUF *lpBuffers, DWORD dwBufferCount, DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped, int &offset, int packetSize)
 {
     int n = WSASend(s, lpBuffers, dwBufferCount, NULL, dwFlags, lpOverlapped, NULL);
@@ -442,7 +591,32 @@ int IOManager::sendTCPPacket(SOCKET s, WSABUF *lpBuffers, DWORD dwBufferCount, D
     }
 }
 
-
+/*------------------------------------------------------------------------------------------------------------------
+ * -- FUNCTION: sendUDPPacket
+ * --
+ * -- DATE: Feb14, 2020
+ * --
+ * -- REVISIONS:
+ * --
+ * -- DESIGNER: Michael Yu
+ * --
+ * -- PROGRAMMER: Michael Yu
+ * --
+ * -- INTERFACE: sendUDPPacket(SOCKET s, WSABUF *lpBuffers, DWORD dwBufferCount, DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped,
+ * --                         struct sockaddr *server, int size, int &offset, int packetSize)
+ * --                       s               - bound client socket that will be used to send data through
+ * --                       lpBuffers       - pointer to the buffer(s) containing the data to be sent over the connection
+ * --                       dwBufferCount   - number of buffers pointed to by lpBuffers
+ * --                       dwFlags         - flags for the WSASend operation
+ * --                       lpOverlapped    - overlapped structure that will hold any overlapped I/O from the WSASend operation
+ * --                       server          - pointer to the sockaddr structure containing the information of the server to send data to
+ * --                       size            - size of the sockaddr structure
+ * --                       offset          - integer value denoting the position of the current position of the file being read from
+ * --                       packetSize      - designated integer size of the packet to be sent
+ * --
+ * -- RETURNS: 0 upon successful send through the socket, else -1
+ * --
+ * ----------------------------------------------------------------------------------------------------------------------*/
 int IOManager::sendUDPPacket(SOCKET s, WSABUF *lpBuffers, DWORD dwBufferCount, DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped,
                              struct sockaddr *server, int size, int &offset, int packetSize)
 {
@@ -465,7 +639,25 @@ int IOManager::sendUDPPacket(SOCKET s, WSABUF *lpBuffers, DWORD dwBufferCount, D
     }
 }
 
-
+/*------------------------------------------------------------------------------------------------------------------
+ * -- FUNCTION: writeToFile
+ * --
+ * -- DATE: Feb14, 2020
+ * --
+ * -- REVISIONS:
+ * --
+ * -- DESIGNER: Michael Yu
+ * --
+ * -- PROGRAMMER: Michael Yu
+ * --
+ * -- INTERFACE: writeToFile(LPWSAOVERLAPPED Overlapped, DWORD BytesTransferred)
+ * --                       Overlapped          - pointer to the overlapped structure that will be cast to a LPSOCKET_INFORMATION
+ * --                                              to access the buffer storing the data to write
+ * --                       BytesTransferred    - DWORD containing the number of bytes received from the WSARecvFrom operation
+ * --
+ * -- RETURNS: 0 upon successful send through the socket, else -1
+ * --
+ * ----------------------------------------------------------------------------------------------------------------------*/
 void IOManager::writeToFile(LPWSAOVERLAPPED Overlapped, DWORD BytesTransferred)
 {
     LPSOCKET_INFORMATION SI = (LPSOCKET_INFORMATION)Overlapped;

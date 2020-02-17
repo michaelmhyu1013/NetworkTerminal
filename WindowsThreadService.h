@@ -36,9 +36,9 @@ struct WindowsThreadService
     }
 
 
-    static DWORD WINAPI onTCPConnect(LPVOID param)
+    static DWORD WINAPI onAttemptClientConnection(LPVOID param)
     {
-        return(((IOManager *)param)->handleTCPConnect(static_cast<SendStruct *>(param)));
+        return(((IOManager *)param)->performTCPConnect(static_cast<SendStruct *>(param)));
     }
 
 
@@ -50,7 +50,7 @@ struct WindowsThreadService
 
     static DWORD WINAPI onConnectRoutine(LPVOID param)
     {
-        return(((IOManager *)param)->handleConnect(static_cast<AcceptStruct *>(param)));
+        return(((IOManager *)param)->handleTCPClientConnect(static_cast<AcceptStruct *>(param)));
     }
 
 

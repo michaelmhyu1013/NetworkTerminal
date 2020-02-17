@@ -5,7 +5,7 @@
 class Server
 {
 public:
-    Server();
+    Server() {}
     Server(AcceptStruct *asInfo)
         : asInfo(asInfo) {}
 

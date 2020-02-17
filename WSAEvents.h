@@ -2,7 +2,6 @@
 #include <winsock2.h>
 #include <windows.h>
 
-
 /*------------------------------------------------------------------------------------------------------------------
  * -- SOURCE FILE:		WSAEvents.h-	A struct that holds all Events within the system. Several handles are created
  *                                                              for each logical grouping of events that are related in signalling.

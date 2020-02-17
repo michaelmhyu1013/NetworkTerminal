@@ -5,7 +5,7 @@
 class Client
 {
 public:
-    Client();
+    Client() {}
     Client(SendStruct *ss)
         : ss(ss) {}
 
