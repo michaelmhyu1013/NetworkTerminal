@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ConnectionConfigurations.h"
+#include "IOManager.h"
 #include "WSAEvents.h"
 #include <queue>
 #include <stdio.h>
@@ -12,6 +13,7 @@ struct AcceptStruct
     SOCKET                   listenSocketDescriptor; // server's socket for listening to incoming client connect
     WSAEvents                *events;
     ConnectionConfigurations *connConfig;
+    LPWSAOVERLAPPED          SI_Overlapped;
     char                     *outputBuffer;
     bool                     *isConnected;
 };

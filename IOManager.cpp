@@ -114,8 +114,8 @@ DWORD IOManager::handleAccept(AcceptStruct *input)
     {
         while (input->isConnected)
         {
-            // TODO: implement as AcceptEx()
-            if ((input->acceptSocketDescriptor = accept(input->listenSocketDescriptor, NULL, NULL)) == INVALID_SOCKET)
+            // TODO: Current only one socket for one client. Change this to create a client socket upon accepting to serve multiple clients
+            if ((input->acceptSocketDescriptor = WSAAccept(input->listenSocketDescriptor, NULL, NULL, NULL, NULL)) == INVALID_SOCKET)
             {
                 qDebug("Listen failed: %d", WSAGetLastError());
                 return(-1);
@@ -214,14 +214,15 @@ DWORD IOManager::handleTCPClientConnect(AcceptStruct *input)
             return(-1);
         }
         SocketInfo->Socket = input->acceptSocketDescriptor;
-
         ZeroMemory(&(SocketInfo->Overlapped), sizeof(WSAOVERLAPPED));
-        SocketInfo->BytesSEND   = 0;
-        SocketInfo->BytesRECV   = 0;
-        SocketInfo->DataBuf.len = MAX_BUFFER_SIZE;
-        SocketInfo->DataBuf.buf = SocketInfo->Buffer;
-
-        Flags = 0;
+        input->SI_Overlapped          = &(SocketInfo->Overlapped);
+        SocketInfo->BytesSEND         = 0;
+        SocketInfo->BytesRECV         = 0;
+        SocketInfo->packetsReceived   = 0;
+        SocketInfo->DataBuf.len       = MAX_BUFFER_SIZE;
+        SocketInfo->DataBuf.buf       = SocketInfo->Buffer;
+        SocketInfo->completeReadEvent = input->events->COMPLETE_READ;
+        Flags                         = 0;
 
         ui.getInstance().printToTerminal("Socket " + std::to_string(input->acceptSocketDescriptor) + " connected");
 
@@ -281,10 +282,11 @@ DWORD IOManager::handleUDPRead(AcceptStruct *input)
     SocketInfo->Socket = input->listenSocketDescriptor;
 
     ZeroMemory(&(SocketInfo->Overlapped), sizeof(WSAOVERLAPPED));
-    SocketInfo->BytesSEND   = 0;
-    SocketInfo->BytesRECV   = 0;
-    SocketInfo->DataBuf.len = MAX_FILE_SIZE;
-    SocketInfo->DataBuf.buf = SocketInfo->Buffer; // assign the wsabuf to the socket buffer
+    SocketInfo->BytesSEND       = 0;
+    SocketInfo->packetsReceived = 0;
+    SocketInfo->BytesRECV       = 0;
+    SocketInfo->DataBuf.len     = MAX_FILE_SIZE;
+    SocketInfo->DataBuf.buf     = SocketInfo->Buffer; // assign the wsabuf to the socket buffer
 
     Flags = 0;
 
@@ -298,6 +300,11 @@ DWORD IOManager::handleUDPRead(AcceptStruct *input)
                 qDebug("WSARecvFrom failed with error: %d", WSAGetLastError());
                 return(FALSE);
             }
+//            else
+//            {
+//                ui.getInstance().printToTerminal("Packets received: " + std::to_string(++(SocketInfo->packetsReceived)));
+//                ui.getInstance().printToTerminal("Total Bytes received: " + std::to_string(++(SocketInfo->BytesRECV)));
+//            }
         }
         Index = WSAWaitForMultipleEvents(1, EventArray, FALSE, WSA_INFINITE, TRUE);
 
@@ -421,6 +428,21 @@ DWORD IOManager::handleSend(SendStruct *input)
 } // IOManager::handleSend
 
 
+DWORD IOManager::handleWriteToScreen(AcceptStruct *input)
+{
+    while (input->isConnected)
+    {
+        WaitForSingleObject(input->events->COMPLETE_READ, INFINITE);
+        LPSOCKET_INFORMATION SI          = (LPSOCKET_INFORMATION)input->SI_Overlapped;
+        std::string          bytesRead   = std::to_string(SI->BytesRECV);
+        int                  packetsRecv = SI->packetsReceived;
+//        ui.getInstance().printToTerminal("Packets Received: " + bytesRead);
+//        ui.getInstance().printToTerminal("Total Bytes Received: %lu" + std::to_string(packetsRecv));
+        ResetEvent(input->events->COMPLETE_READ);
+    }
+}
+
+
 /*------------------------------------------------------------------------------------------------------------------
  * -- FUNCTION: performTCPConnect
  * --
@@ -449,7 +471,7 @@ DWORD IOManager::performTCPConnect(SendStruct *input)
 {
     clock.getInstance().start();
 
-    if (connect(input->clientSocketDescriptor, (struct sockaddr *)input->server, sizeof(*(input->server))) == SOCKET_ERROR)
+    if (WSAConnect(input->clientSocketDescriptor, (struct sockaddr *)input->server, sizeof(*(input->server)), NULL, NULL, NULL, NULL) == SOCKET_ERROR)
     {
         ui.getInstance().printToTerminal("Failed to connect to desired host\n");
         closesocket(input->clientSocketDescriptor);
@@ -505,7 +527,8 @@ void IOManager::readRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED
         return;
     }
     SI->BytesRECV += BytesTransferred;
-
+    (SI->packetsReceived)++;
+    SetEvent(SI->completeReadEvent);
     writeToFile(Overlapped, BytesTransferred);
 
     if (WSARecv(SI->Socket, &(SI->DataBuf), 1, &RecvBytes, &InFlags,
@@ -674,6 +697,8 @@ int IOManager::sendUDPPacket(SOCKET s, WSABUF *lpBuffers, DWORD dwBufferCount, D
 void IOManager::writeToFile(LPWSAOVERLAPPED Overlapped, DWORD BytesTransferred)
 {
     LPSOCKET_INFORMATION SI = (LPSOCKET_INFORMATION)Overlapped;
+
+    SI->BytesRECV += BytesTransferred;
 
     //    qDebug("Packets Received: %lu", ++(SI->BytesSEND));
     std::fstream outputFile{ "output.txt", std::ios_base::binary | std::fstream::app };

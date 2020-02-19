@@ -20,8 +20,9 @@ typedef struct _SOCKET_INFORMATION
     DWORD         BytesRECV;
     DWORD         totalTransmissions;
     DWORD         packetSize;
+    DWORD         packetsReceived;
     DWORD         packetsToSend;
-    WSAEVENT      DETECT_UDP_READ = WSACreateEvent();
+    WSAEVENT      completeReadEvent;
 } SOCKET_INFORMATION, *LPSOCKET_INFORMATION;
 
 
@@ -36,6 +37,7 @@ public:
     DWORD handleAccept(AcceptStruct *input);
     DWORD handleUDPRead(AcceptStruct *input);
     DWORD performTCPConnect(SendStruct *input);
+    DWORD handleWriteToScreen(AcceptStruct *input);
 
     void static CALLBACK readRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags);
     void static CALLBACK sendRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags);
@@ -44,6 +46,8 @@ public:
 
     TimeClock       &clock = TimeClock::getInstance();
     GlobalUIManager &ui    = GlobalUIManager::getInstance();
+    static DWORD    bytesTransferred; // for printing to terminal
+    static int      packetsReceived;  // for printing to terminal
 
     ~IOManager();
 

@@ -30,6 +30,12 @@
 
 struct WindowsThreadService
 {
+    static DWORD WINAPI onWriteToScreen(LPVOID param)
+    {
+        return(((IOManager *)param)->handleWriteToScreen(static_cast<AcceptStruct *>(param)));
+    }
+
+
     static DWORD WINAPI onFileUpload(LPVOID param)
     {
         return(((IOManager *)param)->handleFileRead(static_cast<FileUploadStruct *>(param)));

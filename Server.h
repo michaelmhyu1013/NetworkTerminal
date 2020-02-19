@@ -15,7 +15,8 @@ public:
 
 protected:
     AcceptStruct         *asInfo;
-    HANDLE               acceptThread, readThread, writeThread, connectThread, fileThread;
+    HANDLE               acceptThread, readThread, writeThread, connectThread, fileThread, terminalOutputThread;
+    DWORD                terminalOutputThreadID;
     WindowsThreadService *threadService;
     WSADATA              *wsaData;
 };

@@ -1,6 +1,6 @@
 #pragma once
-#include <winsock2.h>
 #include <windows.h>
+#include <winsock2.h>
 
 /*------------------------------------------------------------------------------------------------------------------
  * -- SOURCE FILE:		WSAEvents.h-	A struct that holds all Events within the system. Several handles are created
@@ -22,8 +22,6 @@
  * -- for overlapped I/O synchronization.
  * ----------------------------------------------------------------------------------------------------------------------*/
 
-constexpr static int EVENT_COUNTS                  = 6;
-
 struct WSAEvents
 {
     // FILE I/O STATES
@@ -31,7 +29,6 @@ struct WSAEvents
     WSAEVENT COMPLETE_FILE_INPUT = WSACreateEvent();
 
     // READING STATES
-    WSAEVENT DETECT_READ   = WSACreateEvent();
     WSAEVENT COMPLETE_READ = WSACreateEvent();
 
     // WRITING STATES

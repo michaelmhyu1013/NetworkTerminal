@@ -53,6 +53,13 @@ int UDPServer::startup()
         qDebug("readThread failed with error");
         return(-1);
     }
+
+    if ((terminalOutputThread = CreateThread(NULL, 0, threadService->onAcceptRoutine,
+                                             (LPVOID)asInfo, 0, &terminalOutputThreadID)) == NULL)
+    {
+        OutputDebugStringA("terminalThread failed with error\n");
+        return(-2);
+    }
     return(0);
 }
 

@@ -1,5 +1,6 @@
 #include "TCPServer.h"
 
+
 /*------------------------------------------------------------------------------------------------------------------
  * -- SOURCE FILE:		TCPServer.cpp -	A concrete implementation of the Server class that creates a TCP server on the
  * --                           desired IP and port as specified by the user.
@@ -24,6 +25,7 @@
  * -- and upon successful binding, the client can send data through the socket to the TCPServer. The data within the
  * -- socket is processed using a completion routine and written to the designated file.
  * ----------------------------------------------------------------------------------------------------------------------*/
+
 
 /*------------------------------------------------------------------------------------------------------------------
  * -- FUNCTION: startup
@@ -65,8 +67,16 @@ int TCPServer::startup()
         OutputDebugStringA("acceptThread failed with error\n");
         return(-3);
     }
+
+    if ((terminalOutputThread = CreateThread(NULL, 0, threadService->onWriteToScreen,
+                                             (LPVOID)asInfo, 0, &acceptThreadID)) == NULL)
+    {
+        OutputDebugStringA("terminalThread failed with error\n");
+        return(-4);
+    }
     return(0);
 }
+
 
 /*------------------------------------------------------------------------------------------------------------------
  * -- FUNCTION: closeHandles
@@ -89,5 +99,6 @@ int TCPServer::startup()
 int TCPServer::closeHandles()
 {
     DWORD error;
+
     return(TerminateThread(acceptThread, error) && TerminateThread(connectThread, error));
 }
