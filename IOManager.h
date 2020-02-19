@@ -21,6 +21,7 @@ typedef struct _SOCKET_INFORMATION
     DWORD         totalTransmissions;
     DWORD         packetSize;
     DWORD         packetsToSend;
+    DWORD         packetsReceived;
     WSAEVENT      DETECT_UDP_READ = WSACreateEvent();
 } SOCKET_INFORMATION, *LPSOCKET_INFORMATION;
 
@@ -51,4 +52,5 @@ private:
     int sendTCPPacket(SOCKET s, WSABUF *lpBuffers, DWORD dwBufferCount, DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped, int &offset, int packetSize);
     int sendUDPPacket(SOCKET s, WSABUF *lpBuffers, DWORD dwBufferCount, DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped, struct sockaddr *server, int size, int &offset, int packetSize);
     void static writeToFile(LPWSAOVERLAPPED Overlapped, DWORD BytesTransferred);
+    void static writeStatisticsToLog(LPWSAOVERLAPPED Overlapped, DWORD BytesTransferred);
 };

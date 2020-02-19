@@ -216,10 +216,11 @@ DWORD IOManager::handleTCPClientConnect(AcceptStruct *input)
         SocketInfo->Socket = input->acceptSocketDescriptor;
 
         ZeroMemory(&(SocketInfo->Overlapped), sizeof(WSAOVERLAPPED));
-        SocketInfo->BytesSEND   = 0;
-        SocketInfo->BytesRECV   = 0;
-        SocketInfo->DataBuf.len = MAX_BUFFER_SIZE;
-        SocketInfo->DataBuf.buf = SocketInfo->Buffer;
+        SocketInfo->BytesSEND       = 0;
+        SocketInfo->BytesRECV       = 0;
+        SocketInfo->packetsReceived = 0;
+        SocketInfo->DataBuf.len     = MAX_BUFFER_SIZE;
+        SocketInfo->DataBuf.buf     = SocketInfo->Buffer;
 
         Flags = 0;
 
@@ -281,12 +282,12 @@ DWORD IOManager::handleUDPRead(AcceptStruct *input)
     SocketInfo->Socket = input->listenSocketDescriptor;
 
     ZeroMemory(&(SocketInfo->Overlapped), sizeof(WSAOVERLAPPED));
-    SocketInfo->BytesSEND   = 0;
-    SocketInfo->BytesRECV   = 0;
-    SocketInfo->DataBuf.len = MAX_FILE_SIZE;
-    SocketInfo->DataBuf.buf = SocketInfo->Buffer; // assign the wsabuf to the socket buffer
-
-    Flags = 0;
+    SocketInfo->BytesSEND       = 0;
+    SocketInfo->BytesRECV       = 0;
+    SocketInfo->packetsReceived = 0;
+    Flags                       = 0;
+    SocketInfo->DataBuf.len     = MAX_FILE_SIZE;
+    SocketInfo->DataBuf.buf     = SocketInfo->Buffer; // assign the wsabuf to the socket buffer
 
     while (input->isConnected)
     {
@@ -505,7 +506,6 @@ void IOManager::readRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED
         return;
     }
     SI->BytesRECV += BytesTransferred;
-
     writeToFile(Overlapped, BytesTransferred);
 
     if (WSARecv(SI->Socket, &(SI->DataBuf), 1, &RecvBytes, &InFlags,
@@ -554,6 +554,10 @@ void IOManager::readRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED
  * ----------------------------------------------------------------------------------------------------------------------*/
 void IOManager::UDPReadRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags)
 {
+    LPSOCKET_INFORMATION SI = (LPSOCKET_INFORMATION)Overlapped;
+
+    SI->BytesRECV += BytesTransferred;
+
     writeToFile(Overlapped, BytesTransferred);
 } // IOManager::UDPReadRoutine
 
@@ -676,9 +680,20 @@ void IOManager::writeToFile(LPWSAOVERLAPPED Overlapped, DWORD BytesTransferred)
     LPSOCKET_INFORMATION SI = (LPSOCKET_INFORMATION)Overlapped;
 
     //    qDebug("Packets Received: %lu", ++(SI->BytesSEND));
-    std::fstream outputFile{ "output.txt", std::ios_base::binary | std::fstream::app };
+    std::ofstream logFile{ "log.txt", std::ios_base::binary | std::fstream::app };
+    std::fstream  outputFile{ "output.txt", std::ios_base::binary | std::fstream::app };
+
+    logFile << "Packets Received: " << ++(SI->packetsReceived) << std::endl;
+    logFile << "Size of Packet Received: " << BytesTransferred << " Bytes" << std::endl;
+    logFile << "Total Received In Transfer: " << SI->BytesRECV << " Bytes" << std::endl << std::endl;
 
     outputFile.write(SI->DataBuf.buf, BytesTransferred);
     //    qDebug("Size of write transfer is: %d characters", strBuffer.length());
     outputFile.close();
+}
+
+
+void IOManager::writeStatisticsToLog(LPWSAOVERLAPPED Overlapped, DWORD BytesTransferred)
+{
+    LPSOCKET_INFORMATION SI = (LPSOCKET_INFORMATION)Overlapped;
 }
