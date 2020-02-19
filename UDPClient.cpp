@@ -1,4 +1,6 @@
 #include "UDPClient.h"
+
+
 /*------------------------------------------------------------------------------------------------------------------
  * -- SOURCE FILE:		UDPClient.cpp -	Represents an concrete implementation of a TCPClient that can establish a connection
  * --                                   to a TCP server on the designated port and host or ip address.
@@ -21,6 +23,7 @@
  * -- NOTES: This class creates the necessary threads that allow the client to write data to the TCP server. The packet
  * -- size is specified by the Connection Configuration structure that is passed during construction of the server.
  * ----------------------------------------------------------------------------------------------------------------------*/
+
 
 /*------------------------------------------------------------------------------------------------------------------
  * -- FUNCTION: startup
@@ -52,6 +55,7 @@ int UDPClient::startup()
     return(0);
 }
 
+
 /*------------------------------------------------------------------------------------------------------------------
  * -- FUNCTION: closeHandles
  * --
@@ -72,5 +76,7 @@ int UDPClient::startup()
  * ----------------------------------------------------------------------------------------------------------------------*/
 int UDPClient::closeHandles()
 {
-    return(CloseHandle(writeThread) && CloseHandle(fileThread));
+    DWORD error;
+
+    return(TerminateThread(writeThread, error) && TerminateThread(fileThread, error));
 }

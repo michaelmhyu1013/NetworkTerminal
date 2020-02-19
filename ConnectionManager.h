@@ -30,6 +30,7 @@ protected:
     struct sockaddr_in client, server;
     struct hostent     *hp;
     AcceptStruct       *asInfo;
+    SendStruct         *ss;
     WSAEvents          *events;
     bool               clientConnected{ 0 }, serverConnected{ 0 };
     int                n;

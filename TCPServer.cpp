@@ -88,5 +88,6 @@ int TCPServer::startup()
  * ----------------------------------------------------------------------------------------------------------------------*/
 int TCPServer::closeHandles()
 {
-    return(CloseHandle(acceptThread) && CloseHandle(connectThread));
+    DWORD error;
+    return(TerminateThread(acceptThread, error) && TerminateThread(connectThread, error));
 }

@@ -1,4 +1,6 @@
 #include "UDPServer.h"
+
+
 /*------------------------------------------------------------------------------------------------------------------
  * -- SOURCE FILE:		UDPServer.cpp -	A concrete implementation of the Server class that creates a UDP server on the
  * --                           desired IP and port as specified by the user.
@@ -22,6 +24,7 @@
  * -- Once the UDPServer is established, the socket will simply attempt to read any packets that are sent through the
  * -- bound socket. Any data that is read will be written to the file 'output.txt'
  * ----------------------------------------------------------------------------------------------------------------------*/
+
 
 /*------------------------------------------------------------------------------------------------------------------
  * -- FUNCTION: startup
@@ -53,6 +56,7 @@ int UDPServer::startup()
     return(0);
 }
 
+
 /*------------------------------------------------------------------------------------------------------------------
  * -- FUNCTION: closeHandles
  * --
@@ -73,5 +77,7 @@ int UDPServer::startup()
  * ----------------------------------------------------------------------------------------------------------------------*/
 int UDPServer::closeHandles()
 {
-    return(CloseHandle(readThread));
+    DWORD error;
+
+    return(TerminateThread(readThread, error));
 }

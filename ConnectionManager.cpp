@@ -46,7 +46,9 @@ ConnectionManager::ConnectionManager()
     memset(outputBuffer, '\0', MAX_FILE_SIZE * sizeof(char));
 }
 
+
 /* ------------------------------------------------------ MAIN NETWORKING ------------------------------------------------------ */
+
 
 /*------------------------------------------------------------------------------------------------------------------
  * -- FUNCTION: createUDPClient
@@ -73,7 +75,7 @@ void ConnectionManager::createUDPClient(ConnectionConfigurations *connConfig)
     memset((char *)&server, 0, sizeof(server));
     memset((char *)&client, 0, sizeof(client));
 
-    SendStruct *ss = new SendStruct(connConfig, this->events, this->outputBuffer, &server, &clientConnected);
+    ss = new SendStruct(connConfig, this->events, this->outputBuffer, &server, &clientConnected);
 
     if ((n = configureClientAddressStructures(connConfig, ss)) < 0)
     {
@@ -89,11 +91,12 @@ void ConnectionManager::createUDPClient(ConnectionConfigurations *connConfig)
     if ((n = clnt->startup()) < 0)
     {
         qDebug("Client startup failed with error: %d", n);
-        WSACleanup();
         cleanUp();
+        WSACleanup();
     }
     clientConnected = true;
 }
+
 
 /*------------------------------------------------------------------------------------------------------------------
  * -- FUNCTION: createTCPClient
@@ -119,7 +122,7 @@ void ConnectionManager::createTCPClient(ConnectionConfigurations *connConfig)
 {
     qDebug("tcpclient");
 
-    SendStruct *ss = new SendStruct(connConfig, this->events, this->outputBuffer, &server, &clientConnected);
+    ss = new SendStruct(connConfig, this->events, this->outputBuffer, &server, &clientConnected);
     memset((char *)&server, 0, sizeof(struct sockaddr_in));
 
     if ((n = configureClientAddressStructures(connConfig, ss)) < 0)
@@ -135,11 +138,12 @@ void ConnectionManager::createTCPClient(ConnectionConfigurations *connConfig)
     if ((n = clnt->startup()) < 0)
     {
         qDebug("Client startup failed with error: %d", n);
-        WSACleanup();
         cleanUp();
+        WSACleanup();
     }
     clientConnected = true;
 }
+
 
 /*------------------------------------------------------------------------------------------------------------------
  * -- FUNCTION: createUDPServer
@@ -181,11 +185,12 @@ void ConnectionManager::createUDPServer(ConnectionConfigurations *connConfig)
     if ((n = serv->startup()) < 0)
     {
         qDebug("Server startup failed with error: %d", n);
-        WSACleanup();
         cleanUp();
+        WSACleanup();
     }
     serverConnected = true;
 }
+
 
 /*------------------------------------------------------------------------------------------------------------------
  * -- FUNCTION: createTCPServer
@@ -223,14 +228,15 @@ void ConnectionManager::createTCPServer(ConnectionConfigurations *connConfig)
     if ((n = serv->startup()) < 0)
     {
         qDebug("Server startup failed with error: %d", n);
-        WSACleanup();
         cleanUp();
+        WSACleanup();
     }
     serverConnected = true;
 }
 
 
 /* ------------------------------------------------------ FILE PROCESSING ------------------------------------------------------ */
+
 
 /*------------------------------------------------------------------------------------------------------------------
  * -- FUNCTION: uploadFile
@@ -262,6 +268,7 @@ void ConnectionManager::uploadFile(ConnectionConfigurations *connConfig, std::ws
 
 
 /* ------------------------------------------------------ UTIL FUNCTIONS ------------------------------------------------------ */
+
 
 /*------------------------------------------------------------------------------------------------------------------
  * -- FUNCTION: bindServer
@@ -305,6 +312,7 @@ int ConnectionManager::bindServer(ConnectionConfigurations *connConfig)
     }
     return(0);
 }
+
 
 /*------------------------------------------------------------------------------------------------------------------
  * -- FUNCTION: bindUDPClient
@@ -350,6 +358,7 @@ int ConnectionManager::bindUDPClient(sockaddr_in &client, SendStruct *ss)
     return(0);
 }
 
+
 /*------------------------------------------------------------------------------------------------------------------
  * -- FUNCTION: configureClientAddressStructures
  * --
@@ -393,6 +402,7 @@ int ConnectionManager::configureClientAddressStructures(ConnectionConfigurations
     return(0);
 }
 
+
 /*------------------------------------------------------------------------------------------------------------------
  * -- FUNCTION: cleanUp
  * --
@@ -419,7 +429,10 @@ void ConnectionManager::cleanUp()
         clientConnected = false;
         qDebug("Client closed sockets with return value: %d", clnt->closeSockets());
         qDebug("Client closed thread handles with return value: %d", clnt->closeHandles());
+        clnt->closeHandles();
+        clnt->closeSockets();
         free(clnt);
+        WSACleanup();
     }
 
     if (serverConnected)
@@ -427,7 +440,10 @@ void ConnectionManager::cleanUp()
         serverConnected = false;
         qDebug("Server closed sockets with return value: %d", serv->closeSockets());
         qDebug("Server closed thread handles with return value: %d", serv->closeHandles());
+        serv->closeHandles();
+        serv->closeSockets();
         free(serv);
+        WSACleanup();
     }
 }
 

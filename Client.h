@@ -13,6 +13,7 @@ public:
     int virtual closeHandles() = 0;
     int virtual closeSockets();
     int virtual readFileToOutputBuffer(FileUploadStruct *fs);
+    inline SendStruct *getSS() const { return(this->ss); }
 
 protected:
     WindowsThreadService *threadService;

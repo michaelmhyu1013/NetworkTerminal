@@ -1,4 +1,6 @@
 #include "Server.h"
+
+
 /*------------------------------------------------------------------------------------------------------------------
  * -- SOURCE FILE:		Server.cpp -	Represents an abstract implementation of a server that will be started on the designated
  * --                                   ip and port from the ConnectionConfiguration object.
@@ -24,6 +26,7 @@
  * -- connection attempt.
  * ----------------------------------------------------------------------------------------------------------------------*/
 
+
 /*------------------------------------------------------------------------------------------------------------------
  * -- FUNCTION: closeSockets
  * --
@@ -45,6 +48,9 @@
 int Server::closeSockets()
 {
     int n;
+
+    shutdown(asInfo->acceptSocketDescriptor, SD_BOTH);
+    qDebug("Shutdown code: %d", n);
 
     if ((n = closesocket(asInfo->listenSocketDescriptor)) == SOCKET_ERROR)
     {

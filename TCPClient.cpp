@@ -83,6 +83,7 @@ int TCPClient::startup()
  * ----------------------------------------------------------------------------------------------------------------------*/
 int TCPClient::closeHandles()
 {
-    return(CloseHandle(writeThread) && CloseHandle(connectThread) && CloseHandle(fileThread));
-}
+    DWORD error;
 
+    return(TerminateThread(writeThread, error) && TerminateThread(connectThread, error) && TerminateThread(fileThread, error));
+}

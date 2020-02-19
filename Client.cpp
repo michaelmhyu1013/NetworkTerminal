@@ -47,6 +47,7 @@
  * ----------------------------------------------------------------------------------------------------------------------*/
 int Client::closeSockets()
 {
+    qDebug("Shutdown client socket with code %d", shutdown(ss->clientSocketDescriptor, SD_BOTH));
     return(closesocket(ss->clientSocketDescriptor) == 0 ? 0 : WSAGetLastError());
 }
 

@@ -147,6 +147,7 @@ DWORD IOManager::handleAccept(AcceptStruct *input)
     }
 }
 
+
 /*------------------------------------------------------------------------------------------------------------------
  * -- FUNCTION: handleTCPClientConnect
  * --
@@ -307,6 +308,7 @@ DWORD IOManager::handleUDPRead(AcceptStruct *input)
     }
 } // IOManager::handleUDPRead
 
+
 /*------------------------------------------------------------------------------------------------------------------
  * -- FUNCTION: handleSend
  * --
@@ -418,6 +420,7 @@ DWORD IOManager::handleSend(SendStruct *input)
     return(0);
 } // IOManager::handleSend
 
+
 /*------------------------------------------------------------------------------------------------------------------
  * -- FUNCTION: performTCPConnect
  * --
@@ -460,6 +463,8 @@ DWORD IOManager::performTCPConnect(SendStruct *input)
 
 
 /* ------------------------------------------------------ COMPLETION ROUTINES ------------------------------------------------------ */
+
+
 /*------------------------------------------------------------------------------------------------------------------
  * -- FUNCTION: readRoutine
  * --
@@ -485,14 +490,8 @@ DWORD IOManager::performTCPConnect(SendStruct *input)
  * ----------------------------------------------------------------------------------------------------------------------*/
 void IOManager::readRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED Overlapped, DWORD InFlags)
 {
-    DWORD RecvBytes;
-    // Reference the WSAOVERLAPPED structure as a SOCKET_INFORMATION structure
+    DWORD                RecvBytes;
     LPSOCKET_INFORMATION SI = (LPSOCKET_INFORMATION)Overlapped;
-
-    if (Error != 0)
-    {
-        qDebug("I/O operation failed with error %lu", Error);
-    }
 
     if (BytesTransferred == 0)
     {
@@ -517,8 +516,19 @@ void IOManager::readRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAPPED
             qDebug("WSARecv() failed with error %d", WSAGetLastError());
             return;
         }
+
+        if (WSAGetLastError() == WSAECONNRESET || WSAGetLastError() == WSAEDISCON)
+        {
+            qDebug("Client closd socket. Closing client socket.");
+        }
+
+        if (Error != 0)
+        {
+            qDebug("I/O operation failed with error %lu", Error);
+        }
     }
 } // IOManager::readRoutine
+
 
 /*------------------------------------------------------------------------------------------------------------------
  * -- FUNCTION: UDPReadRoutine
@@ -549,6 +559,7 @@ void IOManager::UDPReadRoutine(DWORD Error, DWORD BytesTransferred, LPWSAOVERLAP
 
 
 /*------------------------------------------------------ HELPER FUNCS ------------------------------------------------------ */
+
 
 /*------------------------------------------------------------------------------------------------------------------
  * -- FUNCTION: sendTCPPacket
@@ -590,6 +601,7 @@ int IOManager::sendTCPPacket(SOCKET s, WSABUF *lpBuffers, DWORD dwBufferCount, D
         return(-1);
     }
 }
+
 
 /*------------------------------------------------------------------------------------------------------------------
  * -- FUNCTION: sendUDPPacket
@@ -638,6 +650,7 @@ int IOManager::sendUDPPacket(SOCKET s, WSABUF *lpBuffers, DWORD dwBufferCount, D
         return(-1);
     }
 }
+
 
 /*------------------------------------------------------------------------------------------------------------------
  * -- FUNCTION: writeToFile

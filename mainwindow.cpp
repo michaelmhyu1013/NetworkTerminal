@@ -247,7 +247,12 @@ void MainWindow::on_actionConnect_as_Server_triggered()
 
 void MainWindow::on_actionUpload_File_triggered()
 {
-    QString      fileName   = QFileDialog::getOpenFileName(this, tr("Select Text File to Upload"), "./", tr("Text files (*.txt)"));
+    QString fileName = QFileDialog::getOpenFileName(this, tr("Select Text File to Upload"), "./", tr("Text files (*.txt)"));
+
+    if (fileName.isNull())
+    {
+        return;
+    }
     std::wstring s_fileName = fileName.toStdWString();
 
     connManager->uploadFile(connConfig, s_fileName);
